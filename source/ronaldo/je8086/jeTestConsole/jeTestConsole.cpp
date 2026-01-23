@@ -1,12 +1,112 @@
 #include <iostream>
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "dsp56kEmu/audio.h"
 #include "jeLib/device.h"
 #include "jeLib/je8086.h"
+#include "jeLib/je8086devices.h"
 #include "jeLib/romloader.h"
+#include "synthLib/midiTypes.h"
 #include "synthLib/wavWriter.h"
 
 using namespace jeLib;
+
+namespace
+{
+	termios g_originalTermios;
+	bool g_termiosModified = false;
+
+	void enableRawMode()
+	{
+		tcgetattr(STDIN_FILENO, &g_originalTermios);
+		g_termiosModified = true;
+
+		termios raw = g_originalTermios;
+		raw.c_lflag &= ~(ICANON | ECHO);
+		raw.c_cc[VMIN] = 0;
+		raw.c_cc[VTIME] = 0;
+		tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	}
+
+	void disableRawMode()
+	{
+		if (g_termiosModified)
+			tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_originalTermios);
+	}
+
+	int getKeyPress()
+	{
+		char c;
+		if (read(STDIN_FILENO, &c, 1) == 1)
+			return c;
+		return -1;
+	}
+
+	int g_faderOsc1Ctrl2 = 64;  // kFader_Osc1Ctrl2, range 0-127
+	int g_faderOsc1Ctrl1 = 64;  // kFader_Osc1Ctrl1, range 0-127
+
+	void handleKeyPress(int key, Je8086& je8086)
+	{
+		switch (key)
+		{
+			case 's':  // increase Osc1Ctrl2
+				if (g_faderOsc1Ctrl2 < 127)
+				{
+					++g_faderOsc1Ctrl2;
+					je8086.setFader(devices::kFader_Osc1Ctrl2, g_faderOsc1Ctrl2 * 8);  // scale 0-127 to 0-1016
+					std::cout << "Osc1Ctrl2: " << g_faderOsc1Ctrl2 << "\n";
+				}
+				break;
+			case 'S':  // decrease Osc1Ctrl2
+				if (g_faderOsc1Ctrl2 > 0)
+				{
+					--g_faderOsc1Ctrl2;
+					je8086.setFader(devices::kFader_Osc1Ctrl2, g_faderOsc1Ctrl2 * 8);
+					std::cout << "Osc1Ctrl2: " << g_faderOsc1Ctrl2 << "\n";
+				}
+				break;
+			case 'a':  // increase Osc1Ctrl1
+				if (g_faderOsc1Ctrl1 < 127)
+				{
+					++g_faderOsc1Ctrl1;
+					je8086.setFader(devices::kFader_Osc1Ctrl1, g_faderOsc1Ctrl1 * 8);
+					std::cout << "Osc1Ctrl1: " << g_faderOsc1Ctrl1 << "\n";
+				}
+				break;
+			case 'A':  // decrease Osc1Ctrl1
+				if (g_faderOsc1Ctrl1 > 0)
+				{
+					--g_faderOsc1Ctrl1;
+					je8086.setFader(devices::kFader_Osc1Ctrl1, g_faderOsc1Ctrl1 * 8);
+					std::cout << "Osc1Ctrl1: " << g_faderOsc1Ctrl1 << "\n";
+				}
+				break;
+			case 'p':  // quit
+				disableRawMode();
+				std::cout << "Quitting...\n";
+				exit(0);
+				break;
+			case 'z':  // Note On C4
+				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
+				std::cout << "Note On: C4\n";
+				break;
+			case 'Z':  // Note Off C4
+				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, 60, 0});
+				std::cout << "Note Off: C4\n";
+				break;				
+			case 'x':  // Note On C4
+				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 72, 127});
+				std::cout << "Note On: C5\n";
+				break;
+			case 'X':  // Note Off C4
+				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, 72, 0});
+				std::cout << "Note Off: C5\n";
+				break;				
+		}
+	}
+}
 
 int main(int _argc, char* _argv[])
 {
@@ -38,7 +138,11 @@ int main(int _argc, char* _argv[])
 
 		device.setMasterVolume(7.0f);
 
+		enableRawMode();
+		atexit(disableRawMode);
+
 		std::cout << "Boot done, starting factory demo playback...\n";
+		std::cout << "Keys: q/Q = Osc1Ctrl2 +/-, s/S = Osc1Ctrl1 +/-, x = quit\n";
 
 		// prepare audio buffers
 		std::array<std::vector<float>, 2> outBuffers;
@@ -66,6 +170,7 @@ int main(int _argc, char* _argv[])
 
 		sysexRemote.evLcdDdDataChanged.addListener([&](const std::array<char, 40>& _lcdContent)
 		{
+			std::cout << " Anything going on on the screen?\n";
 			char lcdString[41]{0};
 
 			for (size_t i=0; i<_lcdContent.size(); ++i)
@@ -83,15 +188,66 @@ int main(int _argc, char* _argv[])
 					bootFinished = true;
 					std::cout << "Boot finished, starting demo playback...\n";
 
-					device.getJe8086().setButton(devices::kSwitch_Rec, true);
-					device.getJe8086().setButton(devices::kSwitch_Hold, true);
+					// With this pressed, the output of asic1 cycles through waveforms in the order it is listed
+					// on osc1. It does not affect asic0.  The waveforms clip heavily
+					//device.getJe8086().setButton(devices::kSwitch_Osc1Waveform, true);
+
+					// This changes neither asic0 nor asic1 output, but it logs a lot of traffic to writeuC to asic 0, 1 and 2. 
+					//device.getJe8086().setButton(devices::kSwitch_Osc2Waveform, true);
+					//device.getJe8086().setButton(devices::kSwitch_Hold, true);
 				}
 			}
 			else if(!demoRunning)
 			{
-				if (s.find("=== ROM PLAY ===") != std::string::npos)
+				//if (s.find("=== ROM PLAY ===") != std::string::npos)
+				if (s.find("Chariots       ") != std::string::npos)
 				{
 					demoRunning = true;
+
+/*
+Teori: asic 0 and 1 are upper and lower voices. se om 0 ednrer seg når man endrer waveform på osc1
+Og hva med polyfoni, hvordan gjøres det - 
+Antakelig derfor det er flere adresser som kopieres mellom asicene?
+
+
+
+*/
+
+					//device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, synthLib::Note_C4, 0x7f});
+/*
+					device.getJe8086().setButton(devices::kSwitch_Rec, false);
+					device.getJe8086().setButton(devices::kSwitch_Hold, false);
+
+
+					device.getJe8086().setButton(devices::kSwitch_Rec, true);
+					device.getJe8086().setButton(devices::kSwitch_Hold, true);
+*/					
+					// Try to switch to manual mode					
+					// Something definitely happens, we get a high pitch note.
+					device.getJe8086().setButton(devices::kSwitch_Exit, true);
+					device.getJe8086().setButton(devices::kSwitch_Write, true);	
+					
+					
+					device.getJe8086().setButton(devices::kSwitch_KeyMode, true);	
+
+					// This works - 0 gives supersaw, 1023 gives a triangle wave with an 8 times higher frequency.
+					// Triangle is default wave for osc 2
+					//device.getJe8086().setFader(devices::kFader_OscBal, 1023);
+					device.getJe8086().setFader(devices::kFader_OscBal, 1023);
+
+					// On startup, the two oscillators have completely different pitch, but they change to
+					// the same once pitch is set using midi.
+					//device.getJe8086().setFader(devices::kFader_Osc2Range, 0);
+					//device.getJe8086().setFader(devices::kFader_FineTune, 0);
+
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 12, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 24, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 36, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 48, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 72, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 84, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 96, 127});
 					std::cout << "Demo playback started, starting recording to .wav file.\n";
 				}
 			}
@@ -116,6 +272,12 @@ int main(int _argc, char* _argv[])
 
 		while (true)
 		{
+			int key = getKeyPress();
+			// After a couple of fader key presses, the display changes to 
+			//"PERFORM * ", the star seems to indicate that the patch has changed. Good!
+			if (key != -1)
+				handleKeyPress(key, device.getJe8086());
+
 			device.process(inputs, outputs, blocksize, midiIn, midiOut);
 
 			for (const auto& e : midiOut)

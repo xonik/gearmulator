@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <assert.h>
 #include <array>
+#include <iostream>
+#include <unistd.h>
 
 template <int32_t N> static constexpr int32_t se(int32_t x) { x <<= (32 - N); return x >> (32 - N); }
 
@@ -26,6 +28,7 @@ public:
 	inline int32_t operator=(int32_t v) { return acc = se<30>(v); }
 	inline int32_t operator+=(int32_t v) { return acc = se<30>(acc + v); }
 	
+	// Here they are! hist is 32bit internally, that's how we can do saturated.
 	inline int32_t rawFull() const { return acc; }
 	inline int32_t getPipelineSat24() const { return std::clamp(hist[head], -0x800000, 0x7fffff); }
 	inline int32_t getPipelineRaw24() const { return se<24>(hist[head]); }
@@ -144,8 +147,10 @@ public:
 
 	void setup(const uint32_t *_pram, SharedState<lg2eram_size> *_shared) { pram = _pram; shared = _shared; }
 
+	// GRAM and IRAM are circular buffers of 256 entries
 	void writeGRAM(int32_t val, uint32_t offset) {shared->gram[(offset + iramPos) & IRAM_MASK] = val;}
-	int32_t readGRAM(uint32_t offset) const {return shared->gram[(offset + iramPos) & IRAM_MASK];}
+	
+	int32_t readGRAM(uint32_t offset) const {return shared->gram[(offset + iramPos) & IRAM_MASK];} 
 
 	void writeIRAM(int32_t val, uint32_t offset) { iram[(offset + iramPos) & IRAM_MASK] = val; }
 	int32_t readIRAM(uint32_t offset) const {return iram[(offset + iramPos) & IRAM_MASK];}
@@ -372,12 +377,17 @@ public:
 	}
 
 	// Interface with hardware / other chips etc.
-	void writeGRAM(int32_t val, uint8_t offset) {core0.writeGRAM(val, offset);}
+	void writeGRAM(int32_t val, uint8_t offset) {
+		//printf("ESP::writeGRAM offset=0x%02x val=0x%06x\n", offset, val);
+		core0.writeGRAM(val, offset);
+	}
 	int32_t readGRAM(uint8_t offset) const {return core0.readGRAM(offset);}
 	int32_t readIRAM0(uint8_t offset) const {return core0.readIRAM(offset);}
 	int32_t readIRAM1(uint8_t offset) const {return core1.readIRAM(offset);}
 	void writeIRAM0(int32_t val, uint8_t offset) {core0.writeIRAM(val, offset);}
 	void writeIRAM1(int32_t val, uint8_t offset) {core1.writeIRAM(val, offset);}
+	
+	// so pram is in intmem, which is NOT IRAM
 	uint8_t readPRAM(size_t offset) const {return intmem[offset];}
 
 	// For running apart from h8 emu
@@ -389,13 +399,22 @@ public:
 
 	uint8_t readuC(uint32_t address) { return shared.readback_regs[address & 3]; }
 
-	void writeuC(uint32_t address, uint8_t value) {
+	void writeuC(uint32_t address, uint8_t value, uint8_t asicId) {
 		address&=0x3fff;
 		program_writing_word[address & 3] = value;
 
+		// pram (instructions) in ESP are fetched from intmem, which seems to switch on eram:
+		// uint32_t *decode = (uint32_t*)(eram ? &intmem[0x1000] : &intmem[0]);
+
 		if (address == 0x2003) {
+			// Mode select register - sets the interface mode for subsequent writes
 			if_mode = value;
 		}
+		// Mode 0x54: Raw Program Memory Write
+		// Purpose: Direct write of 32-bit DSP instructions to program memory (intmem)
+		// Used for: Initial firmware upload, patching DSP program code
+		// Data format: 4 consecutive byte writes form one 32-bit instruction word
+		// Triggers JIT recompilation when program changes
 		else if (if_mode == 0x54 && (address & 3) == 3) {
 			const int addr = address >> 2;
 
@@ -407,14 +426,37 @@ public:
 			intmem[(addr<<2) + 3] = program_writing_word[3];
 
 			auto newValue = *reinterpret_cast<uint32_t*>(&intmem[(addr << 2)]);
+			/*
+			if(newValue == 0x80140 || newValue == 0x338d23 || newValue == 0x59c000 || newValue == 0x59c000){
+				char bin_path[64], txt_path[64];
+				snprintf(bin_path, sizeof(bin_path), "dumps/asic%d.bin", asicId);
+				snprintf(txt_path, sizeof(txt_path), "dumps/asic%d.txt", asicId);
+				dump(bin_path, txt_path);
+
+				// TODO: Add filename
+				//disassembleFirmware();
+				//transpile("rb");
+			}
+			*/
+
+			//printf("writeuC ASIC %d, new value: 0x%x, value: 0x%x\n", asicId, newValue, value);		
 
 			if (newValue != oldValue)
 				opt.setProgramDirty();
 		}
+		// Mode 0x55: Coefficient Update
+		// Purpose: Updates DSP instruction coefficients without changing opcodes
+		// Used for: Real-time parameter changes (filter cutoff, oscillator pitch, etc.)
+		// Data format: Packed coefficient data modifies bits [0:9] of instruction words
+		// This is the fast path for parameter automation - doesn't trigger full recompilation
 		else if (if_mode == 0x55 && (address & 3) == 3) {
 			const int addr = address >> 2;
 			uint32_t *pmem = (uint32_t*)intmem;
 			
+			// Capture old coefficient value before update
+			uint8_t oldCoef = pmem[addr] & 0xff;
+			
+			// sets pmem (program memory) from four bytes in writes
 			pmem[addr] &= 0xffffff00;
 			pmem[addr] |= program_writing_word[0] & 0xff;
 			pmem[addr] &= 0xfffffcff;
@@ -424,11 +466,26 @@ public:
 			pmem[addr + 1] &= 0xfffffc3f;
 			pmem[addr + 1] |= (program_writing_word[2] & 0xf) << 6;
 
+			uint8_t newCoef = pmem[addr] & 0xff;
+			if (oldCoef != newCoef)
+				if(asicId != 3){
+					//printf("ESP::writeuC coef update asic=%d addr=%d oldCoef=%d newCoef=%d\n", asicId, addr, oldCoef, newCoef);
+				}
+
 			// opt.genProgram(this);
 			opt.updateCoef(this);
 		}
+		// Mode 0x56: ERAM Control Bits Update
+		// Purpose: Updates the ERAM (External RAM) control field in DSP instructions
+		// Used for: Configuring delay line addresses, modulation routing for effects
+		// Data format: Modifies bits [23:27] of instruction words (ERAM control field)
+		// Affects 5 consecutive instruction words per write operation
+		// Triggers JIT recompilation when ERAM configuration changes
 		else if (if_mode == 0x56 && (address & 3) == 3) {
 			const int addr = address >> 2;
+
+			// PMEM is a 32 bit representation of intmem! fusing four and four bytes of intmem into one 32 bit word.
+			// So this function writes to intmem
 			uint32_t *pmem = (uint32_t*)intmem;
 
 			const std::array<uint32_t ,5> oldValues{
@@ -462,9 +519,16 @@ public:
 				pmem[addr + 4]
 			};
 
-			if (newValues != oldValues)
+			if (newValues != oldValues) {
 				opt.setProgramDirty();
+				//printf("ESP::writeuC coef update 2 asic=%d addr=%d oldCoef=%d newCoef=%d\n", asicId, addr, oldValues[0], newValues[0]);
+			}
 		}
+		// Mode 0x57: Memory Readback
+		// Purpose: Allows the host CPU (H8S) to read back ESP internal memory
+		// Used for: Diagnostic reads, verifying program uploads, reading DSP state
+		// Data format: Address selects which 4-byte word to read from intmem
+		// Result is placed in shared.readback_regs[0-3] for host to fetch via readuC()
 		else if (if_mode == 0x57 && (address & 3) == 3) {
 			addr_sel = address & ~3;
 			shared.readback_regs[0] = intmem[addr_sel+0];
@@ -472,15 +536,19 @@ public:
 			shared.readback_regs[2] = intmem[addr_sel+2];
 			shared.readback_regs[3] = intmem[addr_sel+3];
 			// printf("Asic sel addr 0x%04x\n",addr_sel);
+			//printf("ESP::writeuC coef update 3 \n");
+
 		}
 		else {
 			// printf("Asic unknown %x write 0x%06x, 0x%02x\n",if_mode,address, value&255);
 		}
 	}
 
-	// Debug
+	// Debug. Binary writes intmem raw
 	void dump(const char *path_bin = "dumps/asic.bin", const char *path_txt = "dumps/asic.txt") {
-		FILE *f = fopen(path_bin, "wb"); fwrite(intmem, 0x4000, 1, f); fclose(f);
+		FILE *f = fopen(path_bin, "wb"); 
+		fwrite(intmem, 0x4000, 1, f); 
+		fclose(f);
 		dasm_all(path_txt);
 	}
 	
@@ -494,8 +562,12 @@ public:
 		fclose(f);
 	}
 
+	// Reads contents of file into intmem and disassembles it. Can probaby be used to read back binary dumps
 	void disassembleFirmware(const char *filename, const char *mode) {
-		FILE *f = fopen(filename, "rb"); fread(intmem, 0xc00, 1, f); fread(intmem + 0x1000, 0xc00, 1, f); fclose(f);
+		FILE *f = fopen(filename, "rb"); 
+		fread(intmem, 0xc00, 1, f); 
+		fread(intmem + 0x1000, 0xc00, 1, f); 
+		fclose(f);
 		dasm_all("dumps/asic_disassemble.txt", mode);
 	}
 
@@ -506,6 +578,15 @@ protected:
 
 	void dasm_all(const char *path, const char *mode = "w")
 	{
+		// (eram ? &intmem[0x1000] : &intmem[0]): 
+		// That means that everything after 0x1000 is eram, whatever that means in this case
+		// 0x1000 = 4096, so i = 1024,
+		// 0x1c00 / 4 = 1792, or 768 positions. Looks very much like pram size. 
+		// In the dumps, the first is represented with 3 bytes, the second with 4. 
+		// PR0 er 24bit,
+		// PR1 er 28bit so it makes sense that the first is smaller.
+		// In my dumps, the first byte is never used for PR1,
+		// Both should be 760 words long, but maybe 1024 is used to make addressing easier.
 		FILE *f = fopen(path, mode);
 		for (int i = 0; i < 0xc00/4; i++) disassemble(i, f);
 		fprintf(f, "\n\n");
@@ -516,6 +597,8 @@ protected:
 	
 	void transpile(FILE *f, bool eram = false)
 	{
+		// pram is a struct of {coef[0:7], shift[8:9], mem[10:17], op[16:22], eram[23:27]}, 
+		// decoded from the 32bit intmem into a 28-bit instruction.
 		struct opword { uint32_t coef, shift, mem, op, eram; };
 		uint32_t *decode = (uint32_t*)(eram ? &intmem[0x1000] : &intmem[0]);
 		opword pram[768];
@@ -778,6 +861,7 @@ protected:
 	}
 
 	void disassemble(uint32_t address, FILE *f) {
+		// Reads from intmem
 		uint32_t opcode = 0;
 		for (int i = 0; i < 4; i++) opcode |= intmem[address * 4 + i] << (i * 8);
 		opcode &= 0xfffffff;

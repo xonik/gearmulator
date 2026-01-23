@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <iostream>
 #include <functional>
 #include <h8s/h8s.hpp>
 
@@ -57,52 +59,84 @@ namespace jeLib
 			kSwitch_DepthSelect
 		};
 
+		// TODO: Here are the faders! But they are not referenced aywhere??
 		enum FaderType : uint8_t
 		{
 			kFader_PitchBend = 0,
 			kFader_ModWheel = 8,
 			kFader_Expression,
 			kFader_BattSense = 11,
-			kFader_Osc2Range = 16,
-			kFader_Osc2PwmDepth,
-			kFader_TvfResonance,
-			kFader_Osc2PulseWidth,
-			kFader_Bass,
-			kFader_TvfFreq,
-			kFader_Treble,
-			kFader_TvfEnvA,
-			kFader_Chorus = 24,
-			kFader_TvfEnvS,
-			kFader_TvfEnvR,
-			kFader_TvfEnvD,
-			kFader_DelayTime,
-			kFader_TvaEnvA,
-			kFader_DelayFb,
-			kFader_DelayLevel,
-			kFader_TvfEnvDepth = 32,
-			kFader_TvfLFO1,
-			kFader_TvfKeyFollow,
-			kFader_TvaLevel,
-			kFader_TvaEnvD,
-			kFader_TvaLFO1Depth,
-			kFader_TvaEnvS,
-			kFader_TvaEnvR,
+
+			// Osc 2
+			kFader_Osc2Range = 16, // Osc 2 range
+			kFader_Osc2PwmDepth, // Osc2 pulse width modulation depth (if square wave selected), LFO 1 depth otherwise
+
+			kFader_TvfResonance, // Filter resonance
+
+			kFader_Osc2PulseWidth, // Osc 2 pulse width (if square wave selected), shape otherwise
+
+			kFader_Bass, // FX: Tone control bass
+
+			kFader_TvfFreq, // Filter cutoff frequency
+
+			kFader_Treble, // FX: Tone control treble
+
+			kFader_TvfEnvA, // Filter envelope attack
+
+			kFader_Chorus = 24, // FX: Chorus level
+
+			kFader_TvfEnvS, // Filter envelope sustain
+			kFader_TvfEnvR, // Filter envelope release
+			kFader_TvfEnvD, // Filter envelope decay
+
+			kFader_DelayTime, // FX: Delay time
+			
+			kFader_TvaEnvA, // Ampl envelope attack
+		
+			kFader_DelayFb, // FX: Delay feedback 
+			kFader_DelayLevel, // FX: Delay level
+
+			kFader_TvfEnvDepth = 32, // Filter envelope depth
+
+			// Filter
+			kFader_TvfLFO1, // Filter cutoff LFO1 depth
+			kFader_TvfKeyFollow, // Filter cutoff key follow
+
+			kFader_TvaLevel, // Ampl level (under amp)?
+			kFader_TvaEnvD, // Ampl envelope decay
+			kFader_TvaLFO1Depth, // Amp LFO1 Depth (under amp)
+			kFader_TvaEnvS, // Ampl envelope sustain
+			kFader_TvaEnvR, // Ampl envelope release
+
+			// Osc 1
 			kFader_Osc1Ctrl2 = 40,
 			kFader_Osc1Ctrl1 = 44,
-			kFader_FineTune = 46,
+
+			kFader_FineTune = 46, // Osc 2 fine tune (wide when range is at min/max)
+
 			kFader_Tempo = 48,
 			kFader_PortaTime,
+
+			// Modulation (LFO2)
 			kFader_LFO2Depth,
 			kFader_LFO2Rate,
+
+			// Not sure where?
 			kFader_Ribbon1,
 			kFader_Ribbon2,
 			kFader_Unused1,
 			kFader_Unused2,
+
+			// LFO 1
 			kFader_LFO1Rate = 56,
 			kFader_LFO1Fade,
+
+			// Osc common
 			kFader_OscBal,
 			kFader_XModDepth,
 			kFader_LFO1Depth,
+
+			// Pitch envelope
 			kFader_PitchEnvDepth,
 			kFader_PitchEnvA,
 			kFader_PitchEnvD
@@ -132,10 +166,11 @@ namespace jeLib
 			void write(uint32_t _address, uint8_t _value) override
 			{
 				const int asic = (_address >> 14) & 3; _address &= 0x3fff;
-				if (asic == 0) asic0.writeuC(_address, _value);
-				else if (asic == 1) asic1.writeuC(_address, _value);
-				else if (asic == 2) asic2.writeuC(_address, _value);
-				else asic3.writeuC(_address, _value);
+				if (asic == 0) asic0.writeuC(_address, _value, asic);
+				else if (asic == 1) asic1.writeuC(_address, _value, asic);
+				else if (asic == 2) asic2.writeuC(_address, _value, asic);
+				else asic3.writeuC(_address, _value, asic);
+				//dump();
 			}
 			
 			void runForCycles(uint64_t cycles) {
@@ -164,14 +199,86 @@ namespace jeLib
 					asic3.opt.callOptimized(&asic3);
 
 					// Last DSP audio output
-					postSample(asic3.readGRAM(0xe8), asic3.readGRAM(0xec));
+					// output is read from 232 and 236. Two channels = stereo. First is left, second is right.
+					// That doesn't make sense with 
+					//postSample(asic3.readGRAM(0xe8), asic3.readGRAM(0xec));
+					// TODO: Could it be that reading from asic0 gives 24 bit where asic3 gives 16 bit?
+					// at least the waves seem to be clippping
+					//postSample(asic0.readGRAM(0xe8), asic0.readGRAM(0xec));
+
+					// With no init, it sounds like i'm getting a supersaw from asic1 and something closer to a single
+					// saw from asic 0, but with a square wave mixed in.
+
+
+					// when reading from asic1, the output has to be divided by 4 to not clip.
+					//postSample(asic0.readGRAM(0xe8) >> 2, asic0.readGRAM(0xec) >> 2);
+					//postSample(asic1.readGRAM(0xe8) >> 2, asic1.readGRAM(0xec) >> 2);
+
+					// Reading asic0
+					// 0x80 gives a supersaw Lager tone
+					// --- distorted saw is when in split mode, this is assigned to the lower part of the keyboard
+					// 0x82 gives a distorted saw
+					// 0x84 gives a distorted saw
+					// 0x86, 0x88, 0x8A gives a distorted saw (but are not copied to asic1 normally)
+
+					// Reading asic1 
+					// 0x80 gives supersaw. (0x81 is 1 sample later) Forwarder 80 på asic0
+					// 0x82 gives distorted saw
+					// 0x84 gives distorted saw
+					// 0x86 gives supersaw. lager tone, 0x80 * 1.4
+					// 0x88 gives distorted saw
+					// 0x8a dives supersaw. lager tone, 0x80 / 2.8	
+
+					// so six signals are interleaved.
+					// e8 and ec both give super saws. Perhaps its the same interval as between 86 and 8A.
+
+					// Reading asic2
+					// 0x80 nothing, 0x80 / 2.8
+					// 0x82 nothing
+					// 0x84 nothing
+					// 0x86 supersaw, forwarder 0x86 på asic1, 0x80 * 1.4
+					// 0x88 supersaw, lager tone, 0x80 / 4
+					// 0x8a supersaw, forwarder 0x8a på asic1, 0x80 / 2.8
+					// 0x8c nothing
+					// 0x8e nothing
+
+					// distorted saw har fast frekvens, endres ikke når pitch endrer seg?
+					// Super saw shows up 7 different places. Not sure if it is summed in any way.
 					
+					postSample(asic0.readGRAM(0x80) >> 2, asic1.readGRAM(0x82) >> 2);
+
+					// Frequencies
+					// 0 - 80 og 1 80 har samme pitch
+					// 1 - 86 er 1.4 * 1 80
+					// 1 - 80 er 2.8 * 1 8a
+					// 2 - 86 er 1.4 * 1 80
+					// 1 - 80 er 4 * 2 - 88
+					// 1 - 80 er 2.8 * 2 8a
+
+
 					// DSP->DSP communication
-					for (int k = 0; k <= 0x4; k += 2) asic1.writeGRAM(asic0.readGRAM(0x80 + k), k);
-					for (int k = 0; k <= 0xa; k += 2) asic2.writeGRAM(asic1.readGRAM(0x80 + k), k);
-					for (int k = 0; k <= 0xe; k += 2) asic3.writeGRAM(asic2.readGRAM(0x80 + k), k);
-					asic3.writeGRAM(asic2.readGRAM(0xa0), 0x20);
-					asic3.writeGRAM(asic2.readGRAM(0xa2), 0x22);
+					// Each line copies GRAM addresses between ASICs. Loop iterates k=0,2,4,... so count = (end-start)/2 + 1					
+					// GRAM is circular, so it doesn't really matter where we read and write, as long as the offsets are kept
+					// correct and far enough apart?
+
+					// it's quite cool! The two first asics have three oscillators each. asic1 forwards the outputs of
+					// asic0 as well, on the same gram addresses. Presumably, asic2 has the two last oscillators.
+
+					// 3 addresses: 0x80,0x82,0x84 → 0x00,0x02,0x04					
+					for (int k = 0; k <= 0x4; k += 2) asic1.writeGRAM(asic0.readGRAM(0x80 + k), k); 
+					
+					// 6 addresses: 0x80-0x8a → 0x00-0x0a 
+					// Presumably 6 "audio signals" from asic1 to asic2. But that doesn't make sense. Why 6 and not 8?
+					for (int k = 0; k <= 0xa; k += 2) asic2.writeGRAM(asic1.readGRAM(0x80 + k), k); 
+					
+					// 8 addresses: 0x80-0x8e → 0x00-0x0e
+					for (int k = 0; k <= 0xe; k += 2) asic3.writeGRAM(asic2.readGRAM(0x80 + k), k);  
+
+					// 120 is copied to 32
+					// 162 is copied to 34
+					// In other words, two additional signals from asic 2 to 3
+					asic3.writeGRAM(asic2.readGRAM(0xa0), 0x20);  // 1 address: 0xa0 → 0x20
+					asic3.writeGRAM(asic2.readGRAM(0xa2), 0x22);  // 1 address: 0xa2 → 0x22
 
 					// Advance PCs
 					asic0.sync_cores();
@@ -285,6 +392,18 @@ namespace jeLib
 					if ((which & 0x3e) == 46) which = 46;		// finetune mapped across several pins
 
 					int val = values[which] & 1023;
+
+					if (which == kFader_Osc1Ctrl1 && val != lastOsc1Ctrl1)
+					{
+						lastOsc1Ctrl1 = val;
+						std::cout << "Faders::read fader=Osc1Ctrl1 value=" << val << "\n";
+					}
+					else if (which == kFader_Osc1Ctrl2 && val != lastOsc1Ctrl2)
+					{
+						lastOsc1Ctrl2 = val;
+						std::cout << "Faders::read fader=Osc1Ctrl2 value=" << val << "\n";
+					}
+
 					return (off & 1) ? ((val << 6) & 0xc0) : ((val >> 2) & 0xff);
 				}
 				return 0;
@@ -296,6 +415,7 @@ namespace jeLib
 			}
 			void setFader(int which, int value)	// 0<=which<64, value 0->1023!!
 			{
+				// 0-1023 because the on-chip (?) ADC is 10 bit.
 				// which:
 				// 0 = pitch bend, 8 = mod, 9 = EXPDL, 10 = 0, 11 = BATSENS
 				// n >=16 = VR(n - 15).
@@ -305,6 +425,7 @@ namespace jeLib
 		protected:
 			int8 scanning {0}, p6dr {0}, adcsr {0};
 			int values[64] {};
+			int lastOsc1Ctrl1 {-1}, lastOsc1Ctrl2 {-1};
 		};
 	}
 }

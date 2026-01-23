@@ -101,6 +101,11 @@ namespace jeLib
 		ports.press(_type, _pressed);
 	}
 
+	void Je8086::setFader(const devices::FaderType _type, const int _value)
+	{
+		faders.setFader(static_cast<int>(_type), _value);
+	}
+
 	void Je8086::onLedsChanged(devices::Port*/* _port*/)
 	{
 		/*
@@ -116,6 +121,7 @@ namespace jeLib
 
 	void Je8086::onReceiveSample(int32_t _left, int32_t _right)
 	{
+		// Receives output from asics and places in sample buffer
 		m_midiInRateLimiter.processSample();
 		m_sampleBuffer.emplace_back(_left, _right);
 	}

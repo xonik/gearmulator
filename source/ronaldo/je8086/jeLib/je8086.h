@@ -30,6 +30,7 @@ namespace jeLib
 		bool hasDoneFactoryReset() const { return m_factoryreset; }
 
 		void setButton(devices::SwitchType _type, bool _pressed);
+		void setFader(devices::FaderType _type, int _value);
 
 	private:
 		static void onLedsChanged(devices::Port* _port);

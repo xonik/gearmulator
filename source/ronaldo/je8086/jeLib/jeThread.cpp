@@ -132,9 +132,11 @@ namespace jeLib
 				}
 			}
 
+			// Generates more samples if the ones we have already have been consumed
 			while (m_je8086.getSampleBuffer().empty())
 				m_je8086.step();
 
+			// Pushes samples to audio output
 			m_audioOut.push_back(m_je8086.getSampleBuffer().front());
 			m_je8086.clearSampleBuffer();
 
