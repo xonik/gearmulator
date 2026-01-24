@@ -245,7 +245,7 @@ namespace jeLib
 					// distorted saw har fast frekvens, endres ikke når pitch endrer seg?
 					// Super saw shows up 7 different places. Not sure if it is summed in any way.
 					
-					postSample(asic2.readGRAM(0x88) >> 2, asic2.readGRAM(0x8a) >> 2);
+					postSample(asic0.readGRAM(0x80) >> 2, asic0.readGRAM(0x80) >> 2);
 
 					// Frequencies
 					// 0 - 80 og 1 80 har samme pitch

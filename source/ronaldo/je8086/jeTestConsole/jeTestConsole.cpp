@@ -46,8 +46,10 @@ namespace
 		return -1;
 	}
 
-	int g_faderOsc1Ctrl2 = 63;  // kFader_Osc1Ctrl2, range 0-127
-	int g_faderOsc1Ctrl1 = 63;  // kFader_Osc1Ctrl1, range 0-127
+	//int g_faderOsc1Ctrl2 = 63;  // kFader_Osc1Ctrl2, range 0-127
+	int g_faderOsc1Ctrl2 = -1;  // kFader_Osc1Ctrl2, range 0-127
+	//int g_faderOsc1Ctrl1 = 63;  // kFader_Osc1Ctrl1, range 0-127
+	int g_faderOsc1Ctrl1 = -1;  // kFader_Osc1Ctrl1, range 0-127
 	int g_osc1Waveform = 0;     // Osc1Waveform, range 0-6 (SUPER SAW, TWM, ..., TRI)
 
 	constexpr int kButtonReleaseCycles = 100;  // Number of cycles before button release
@@ -161,17 +163,22 @@ namespace
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 6);
 				std::cout << "Osc1 Waveform: TRI (6)\n";
 				break;
-			case 'd':  // Osc1Control1 minimum (0)
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 0);
-				std::cout << "Osc1 Control1: 0 (min)\n";
+			case 'd':  // Osc1Control1 increment by 1
+				if (g_faderOsc1Ctrl1 < 127) ++g_faderOsc1Ctrl1;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, g_faderOsc1Ctrl1);
+				//std::cout << "Osc1 Control1: " << g_faderOsc1Ctrl1 << "\n";
+				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
-			case 'D':  // Osc1Control1 maximum (127)
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 127);
-				std::cout << "Osc1 Control1: 127 (max)\n";
+			case 'D':  // Osc1Control1 increment by 1
+				if (g_faderOsc1Ctrl1 < 127) ++g_faderOsc1Ctrl1;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, g_faderOsc1Ctrl1);
+				//std::cout << "Osc1 Control1: " << g_faderOsc1Ctrl1 << "\n";
+				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
 			case 'm':  // Osc1Control2 minimum (0)
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 0);
-				std::cout << "Osc1 Control2: 0 (min)\n";
+				if (g_faderOsc1Ctrl2 < 127) ++g_faderOsc1Ctrl2;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
+				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'M':  // Osc1Control2 maximum (127)
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
@@ -185,6 +192,7 @@ namespace
 				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 0);
 				std::cout << "Setting OscBalance to 0\n";;
 				break;
+
 			case 'r':  // KeyMode SINGLE
 				sendParameterChange(PerformanceCommon::KeyMode, 0);
 				std::cout << "KeyMode: SINGLE (0)\n";
@@ -414,9 +422,10 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 				tLast = tNow;
 				double intervalRealTimePercent = 100.0f * static_cast<double>(intervalProcessedSamples) / (elapsed.count() * params.hostSamplerate);
 				double realTimePercent = 100.0f * static_cast<double>(totalProcessedSamples) / (std::chrono::duration<double>(tNow - t0).count() * params.hostSamplerate);
-				std::cout << "Recorded " << (totalProcessedSamples / samplerate) << " sec"
+				/*std::cout << "Recorded " << (totalProcessedSamples / samplerate) << " sec"
 						  << ", last interval speed " << static_cast<int>(intervalRealTimePercent) << "%, "
 						  << "total average " << static_cast<int>(realTimePercent) << "%\n";
+						  */
 				intervalProcessedSamples -= samplerate;
 			}
 		}

@@ -441,8 +441,12 @@ public:
 
 			//printf("writeuC ASIC %d, new value: 0x%x, value: 0x%x\n", asicId, newValue, value);		
 
-			if (newValue != oldValue)
+			if (newValue != oldValue) {
+				if (asicId == 0) {
+					printf("ESP::writeuC PMEM write asic=%d addr=%d newValue=0x%08x\n", asicId, addr, newValue);
+				}
 				opt.setProgramDirty();
+			}
 		}
 		// Mode 0x55: Coefficient Update
 		// Purpose: Updates DSP instruction coefficients without changing opcodes
@@ -454,9 +458,11 @@ public:
 			uint32_t *pmem = (uint32_t*)intmem;
 			
 			// Capture old coefficient value before update
-			uint8_t oldCoef = pmem[addr] & 0xff;
+			uint8_t old1 = pmem[addr];
+			uint8_t old2 = pmem[addr+1];
 			
 			// sets pmem (program memory) from four bytes in writes
+			// TODO: Interesting, it writes two bytes, not one.
 			pmem[addr] &= 0xffffff00;
 			pmem[addr] |= program_writing_word[0] & 0xff;
 			pmem[addr] &= 0xfffffcff;
@@ -467,9 +473,17 @@ public:
 			pmem[addr + 1] |= (program_writing_word[2] & 0xf) << 6;
 
 			uint8_t newCoef = pmem[addr] & 0xff;
-			if (oldCoef != newCoef)
-				if(asicId != 3){
-					//printf("ESP::writeuC coef update asic=%d addr=%d oldCoef=%d newCoef=%d\n", asicId, addr, oldCoef, newCoef);
+			uint8_t newCoef2 = pmem[addr+1] & 0xff;
+
+			uint8_t new1 = pmem[addr];
+			uint8_t new2 = pmem[addr+1];
+
+			// Two coefficients are packed into a single 14bit value.
+			uint32_t joinedCoef = (static_cast<uint32_t>(newCoef) << 7) | newCoef2;
+			if (old1 != new1 || old2 != new2)
+				if(asicId == 0){
+					//printf("ESP::writeuC coef update asic=%d addr=%d coef=0x%04x\n", asicId, addr, joinedCoef);
+					printf(",%d,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X ", joinedCoef, joinedCoef, newCoef, newCoef2, pmem[addr], pmem[addr+1], addr);
 				}
 
 			// opt.genProgram(this);
@@ -521,7 +535,9 @@ public:
 
 			if (newValues != oldValues) {
 				opt.setProgramDirty();
-				//printf("ESP::writeuC coef update 2 asic=%d addr=%d oldCoef=%d newCoef=%d\n", asicId, addr, oldValues[0], newValues[0]);
+				if(asicId == 0){
+					printf("ESP::writeuC coef update 2 asic=%d addr=%d oldCoef=%d newCoef=%d\n", asicId, addr, oldValues[0], newValues[0]);
+				}
 			}
 		}
 		// Mode 0x57: Memory Readback
