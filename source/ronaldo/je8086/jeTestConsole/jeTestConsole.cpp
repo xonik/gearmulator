@@ -102,6 +102,15 @@ namespace
 		g_pendingMidiIn.push_back(ev);
 	}
 
+	// Helper to send SysEx parameter change for PerformanceCommon parameters
+	void sendParameterChange(PerformanceCommon param, int value)
+	{
+		auto sysex = State::createParameterChange(param, value);
+		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);
+		ev.sysex = std::move(sysex);
+		g_pendingMidiIn.push_back(ev);
+	}
+
 	void handleKeyPress(int key, Device& device)
 	{
 		auto& je8086 = device.getJe8086();
@@ -143,23 +152,7 @@ namespace
 				disableRawMode();
 				std::cout << "Quitting...\n";
 				exit(0);
-				break;
-			case 'z':  // Note On C4 - routed through device.process()
-				addMidiEvent(synthLib::M_NOTEON, 60, 127);
-				std::cout << "Note On: C4\n";
-				break;
-			case 'Z':  // Note Off C4
-				addMidiEvent(synthLib::M_NOTEOFF, 60, 0);
-				std::cout << "Note Off: C4\n";
-				break;				
-			case 'x':  // Note On C5
-				addMidiEvent(synthLib::M_NOTEON, 72, 127);
-				std::cout << "Note On: C5\n";
-				break;
-			case 'X':  // Note Off C5
-				addMidiEvent(synthLib::M_NOTEOFF, 72, 0);
-				std::cout << "Note Off: C5\n";
-				break;				
+				break;			
 			case 'w':  // Set waveform to SUPER SAW (0) via SysEx
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 0);
 				std::cout << "Osc1 Waveform: SUPER SAW (0)\n";
@@ -168,6 +161,43 @@ namespace
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 6);
 				std::cout << "Osc1 Waveform: TRI (6)\n";
 				break;
+			case 'd':  // Osc1Control1 minimum (0)
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 0);
+				std::cout << "Osc1 Control1: 0 (min)\n";
+				break;
+			case 'D':  // Osc1Control1 maximum (127)
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 127);
+				std::cout << "Osc1 Control1: 127 (max)\n";
+				break;
+			case 'm':  // Osc1Control2 minimum (0)
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 0);
+				std::cout << "Osc1 Control2: 0 (min)\n";
+				break;
+			case 'M':  // Osc1Control2 maximum (127)
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
+				std::cout << "Osc1 Control2: 127 (max)\n";
+				break;
+			case 'z': 
+				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 127);
+				std::cout << "Setting OscBalance to 127\n";;
+				break;
+			case 'Z':  
+				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 0);
+				std::cout << "Setting OscBalance to 0\n";;
+				break;
+			case 'r':  // KeyMode SINGLE
+				sendParameterChange(PerformanceCommon::KeyMode, 0);
+				std::cout << "KeyMode: SINGLE (0)\n";
+				break;
+			case 't':  // KeyMode DUAL
+				sendParameterChange(PerformanceCommon::KeyMode, 1);
+				std::cout << "KeyMode: DUAL (1)\n";
+				break;
+			case 'y':  // KeyMode SPLIT
+				sendParameterChange(PerformanceCommon::KeyMode, 2);
+				std::cout << "KeyMode: SPLIT (2)\n";
+				break;
+
 		}
 	}
 }
@@ -290,29 +320,21 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					device.getJe8086().setButton(devices::kSwitch_Write, true);	
 					
 					// Switch to key mode single - to make all 8 voices play the same patch
-					device.getJe8086().setButton(devices::kSwitch_KeyMode, true);	
+					// This makes detune++ stop working. Even switching to single after startup makes
+					// it go silent and reverting to other mode won't work either.
+					//sendParameterChange(PerformanceCommon::KeyMode, 0);
+					std::cout << "Setting KeyMode to SINGLE (0)\n";
 
-					// This works - 0 gives supersaw, 1023 gives a triangle wave with an 8 times higher frequency.
-					// Triangle is default wave for osc 2
-					//device.getJe8086().setFader(devices::kFader_OscBal, 1023);
-					device.getJe8086().setFader(devices::kFader_OscBal, 0);
+					// Set default waveform to triangle (6)
+					//sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 6);
+					//std::cout << "Setting default Osc1 waveform to TRI (6)\n";
 
+// no r, t ok, y ok
 					// On startup, the two oscillators have completely different pitch, but they change to
 					// the same once pitch is set using midi. I first thought these didn't work but they may
 					// do once a pitch is set.
 					//device.getJe8086().setFader(devices::kFader_Osc2Range, 0);
 					//device.getJe8086().setFader(devices::kFader_FineTune, 0);
-
-					/*
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 12, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 24, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 36, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 48, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 72, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 84, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 96, 127});
-					*/
 
 					// Route MIDI through device.process() like the plugin does
 					addMidiEvent(synthLib::M_NOTEON, 56, 127);
@@ -323,11 +345,6 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					addMidiEvent(synthLib::M_NOTEON, 61, 127);
 					addMidiEvent(synthLib::M_NOTEON, 62, 127);
 					addMidiEvent(synthLib::M_NOTEON, 63, 127);
-
-					// Turn off super saw mix and detune
-					//device.getJe8086().setFader(devices::kFader_Osc1Ctrl1, 511);
-					//device.getJe8086().setFader(devices::kFader_Osc1Ctrl2, 511);
-
 					// Knapper virker. Osc balace virker
 					// detune/mix/range/fine/pulse width virker IKKE.
 
