@@ -9,6 +9,7 @@
 #include "jeLib/je8086.h"
 #include "jeLib/je8086devices.h"
 #include "jeLib/romloader.h"
+#include "jeLib/state.h"
 #include "synthLib/midiTypes.h"
 #include "synthLib/wavWriter.h"
 
@@ -47,6 +48,7 @@ namespace
 
 	int g_faderOsc1Ctrl2 = 63;  // kFader_Osc1Ctrl2, range 0-127
 	int g_faderOsc1Ctrl1 = 63;  // kFader_Osc1Ctrl1, range 0-127
+	int g_osc1Waveform = 0;     // Osc1Waveform, range 0-6 (SUPER SAW, TWM, ..., TRI)
 
 	constexpr int kButtonReleaseCycles = 100;  // Number of cycles before button release
 
@@ -79,6 +81,25 @@ namespace
 				++it;
 			}
 		}
+	}
+
+	// Helper to add MIDI event to pending queue (goes through device.process like the plugin)
+	void addMidiEvent(uint8_t status, uint8_t data1, uint8_t data2)
+	{
+		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);
+		ev.a = status;
+		ev.b = data1;
+		ev.c = data2;
+		g_pendingMidiIn.push_back(ev);
+	}
+
+	// Helper to send SysEx parameter change (goes through device.process like the plugin)
+	void sendParameterChange(PerformanceData perfData, Patch param, int value)
+	{
+		auto sysex = State::createParameterChange(perfData, param, value);
+		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);
+		ev.sysex = std::move(sysex);
+		g_pendingMidiIn.push_back(ev);
 	}
 
 	void handleKeyPress(int key, Device& device)
@@ -123,26 +144,29 @@ namespace
 				std::cout << "Quitting...\n";
 				exit(0);
 				break;
-			case 'z':  // Note On C4
-				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
+			case 'z':  // Note On C4 - routed through device.process()
+				addMidiEvent(synthLib::M_NOTEON, 60, 127);
 				std::cout << "Note On: C4\n";
 				break;
 			case 'Z':  // Note Off C4
-				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, 60, 0});
+				addMidiEvent(synthLib::M_NOTEOFF, 60, 0);
 				std::cout << "Note Off: C4\n";
 				break;				
-			case 'x':  // Note On C4
-				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 72, 127});
+			case 'x':  // Note On C5
+				addMidiEvent(synthLib::M_NOTEON, 72, 127);
 				std::cout << "Note On: C5\n";
 				break;
-			case 'X':  // Note Off C4
-				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, 72, 0});
+			case 'X':  // Note Off C5
+				addMidiEvent(synthLib::M_NOTEOFF, 72, 0);
 				std::cout << "Note Off: C5\n";
 				break;				
-			case 'w':  // Change waveform osc1
-				je8086.setButton(devices::kSwitch_Osc1Waveform, true);
-				scheduleButtonRelease(devices::kSwitch_Osc1Waveform);
-				std::cout << "Change waveform osc1\n";
+			case 'w':  // Set waveform to SUPER SAW (0) via SysEx
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 0);
+				std::cout << "Osc1 Waveform: SUPER SAW (0)\n";
+				break;
+			case 'W':  // Set waveform to TRI (6) via SysEx
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, 6);
+				std::cout << "Osc1 Waveform: TRI (6)\n";
 				break;
 		}
 	}
@@ -197,7 +221,6 @@ int main(int _argc, char* _argv[])
 			outputs[i] = outBuffers[i].data();
 		}
 
-		std::vector<synthLib::SMidiEvent> midiIn;
 		std::vector<synthLib::SMidiEvent> midiOut;
 
 		uint64_t sampleCounter = 0;
@@ -291,14 +314,15 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 96, 127});
 					*/
 
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 56, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 57, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,58, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,59, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 61, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 62, 127});
-					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,63, 127});
+					// Route MIDI through device.process() like the plugin does
+					addMidiEvent(synthLib::M_NOTEON, 56, 127);
+					addMidiEvent(synthLib::M_NOTEON, 57, 127);
+					addMidiEvent(synthLib::M_NOTEON, 58, 127);
+					addMidiEvent(synthLib::M_NOTEON, 59, 127);
+					addMidiEvent(synthLib::M_NOTEON, 60, 127);
+					addMidiEvent(synthLib::M_NOTEON, 61, 127);
+					addMidiEvent(synthLib::M_NOTEON, 62, 127);
+					addMidiEvent(synthLib::M_NOTEON, 63, 127);
 
 					// Turn off super saw mix and detune
 					//device.getJe8086().setFader(devices::kFader_Osc1Ctrl1, 511);
@@ -316,7 +340,9 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 
 		while (!demoRunning)
 		{
-			device.process(inputs, outputs, blocksize, midiIn, midiOut);
+			// Pass pending MIDI events through device.process() like the plugin does
+			device.process(inputs, outputs, blocksize, g_pendingMidiIn, midiOut);
+			g_pendingMidiIn.clear();
 
 			for (const auto& e : midiOut)
 				sysexRemote.receive(e);
@@ -340,7 +366,9 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 
 			processPendingReleases(device.getJe8086());
 
-			device.process(inputs, outputs, blocksize, midiIn, midiOut);
+			// Pass pending MIDI events through device.process() like the plugin does
+			device.process(inputs, outputs, blocksize, g_pendingMidiIn, midiOut);
+			g_pendingMidiIn.clear();
 
 			for (const auto& e : midiOut)
 				sysexRemote.receive(e);

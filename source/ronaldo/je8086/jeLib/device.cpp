@@ -23,6 +23,7 @@ namespace jeLib
 
 		m_thread.reset(new JeThread(*m_je8086));
 
+		// The on param changed only changes master volume???
 		m_paramChangedListener.set(m_sysexRemote.evParamChanged, [this](const uint8_t _page, const uint8_t _index, const int32_t& _value)
 		{
 			onParamChanged(_page, _index, _value);
