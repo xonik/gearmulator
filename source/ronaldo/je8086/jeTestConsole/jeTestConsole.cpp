@@ -2,6 +2,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <vector>
 
 #include "dsp56kEmu/audio.h"
 #include "jeLib/device.h"
@@ -44,11 +45,45 @@ namespace
 		return -1;
 	}
 
-	int g_faderOsc1Ctrl2 = 64;  // kFader_Osc1Ctrl2, range 0-127
-	int g_faderOsc1Ctrl1 = 64;  // kFader_Osc1Ctrl1, range 0-127
+	int g_faderOsc1Ctrl2 = 63;  // kFader_Osc1Ctrl2, range 0-127
+	int g_faderOsc1Ctrl1 = 63;  // kFader_Osc1Ctrl1, range 0-127
 
-	void handleKeyPress(int key, Je8086& je8086)
+	constexpr int kButtonReleaseCycles = 100;  // Number of cycles before button release
+
+	struct PendingButtonRelease
 	{
+		devices::SwitchType button;
+		int cyclesRemaining;
+	};
+
+	std::vector<PendingButtonRelease> g_pendingReleases;
+	std::vector<synthLib::SMidiEvent> g_pendingMidiIn;  // Queue for MIDI events to send via device.process()
+
+	void scheduleButtonRelease(devices::SwitchType button)
+	{
+		g_pendingReleases.push_back({button, kButtonReleaseCycles});
+	}
+
+	void processPendingReleases(Je8086& je8086)
+	{
+		for (auto it = g_pendingReleases.begin(); it != g_pendingReleases.end(); )
+		{
+			if (--it->cyclesRemaining <= 0)
+			{
+				std::cout << "Releasing button " << static_cast<int>(it->button) << "\n";
+				je8086.setButton(it->button, false);
+				it = g_pendingReleases.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
+
+	void handleKeyPress(int key, Device& device)
+	{
+		auto& je8086 = device.getJe8086();
 		switch (key)
 		{
 			case 's':  // increase Osc1Ctrl2
@@ -70,7 +105,7 @@ namespace
 			case 'a':  // increase Osc1Ctrl1
 				if (g_faderOsc1Ctrl1 < 127)
 				{
-					++g_faderOsc1Ctrl1;
+					g_faderOsc1Ctrl1+=8;
 					je8086.setFader(devices::kFader_Osc1Ctrl1, g_faderOsc1Ctrl1 * 8);
 					std::cout << "Osc1Ctrl1: " << g_faderOsc1Ctrl1 << "\n";
 				}
@@ -78,7 +113,7 @@ namespace
 			case 'A':  // decrease Osc1Ctrl1
 				if (g_faderOsc1Ctrl1 > 0)
 				{
-					--g_faderOsc1Ctrl1;
+					g_faderOsc1Ctrl1-=8;
 					je8086.setFader(devices::kFader_Osc1Ctrl1, g_faderOsc1Ctrl1 * 8);
 					std::cout << "Osc1Ctrl1: " << g_faderOsc1Ctrl1 << "\n";
 				}
@@ -104,6 +139,11 @@ namespace
 				je8086.addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEOFF, 72, 0});
 				std::cout << "Note Off: C5\n";
 				break;				
+			case 'w':  // Change waveform osc1
+				je8086.setButton(devices::kSwitch_Osc1Waveform, true);
+				scheduleButtonRelease(devices::kSwitch_Osc1Waveform);
+				std::cout << "Change waveform osc1\n";
+				break;
 		}
 	}
 }
@@ -142,7 +182,6 @@ int main(int _argc, char* _argv[])
 		atexit(disableRawMode);
 
 		std::cout << "Boot done, starting factory demo playback...\n";
-		std::cout << "Keys: q/Q = Osc1Ctrl2 +/-, s/S = Osc1Ctrl1 +/-, x = quit\n";
 
 		// prepare audio buffers
 		std::array<std::vector<float>, 2> outBuffers;
@@ -227,19 +266,21 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					device.getJe8086().setButton(devices::kSwitch_Exit, true);
 					device.getJe8086().setButton(devices::kSwitch_Write, true);	
 					
-					
+					// Switch to key mode single - to make all 8 voices play the same patch
 					device.getJe8086().setButton(devices::kSwitch_KeyMode, true);	
 
 					// This works - 0 gives supersaw, 1023 gives a triangle wave with an 8 times higher frequency.
 					// Triangle is default wave for osc 2
 					//device.getJe8086().setFader(devices::kFader_OscBal, 1023);
-					device.getJe8086().setFader(devices::kFader_OscBal, 1023);
+					device.getJe8086().setFader(devices::kFader_OscBal, 0);
 
 					// On startup, the two oscillators have completely different pitch, but they change to
-					// the same once pitch is set using midi.
+					// the same once pitch is set using midi. I first thought these didn't work but they may
+					// do once a pitch is set.
 					//device.getJe8086().setFader(devices::kFader_Osc2Range, 0);
 					//device.getJe8086().setFader(devices::kFader_FineTune, 0);
 
+					/*
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 12, 127});
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 24, 127});
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 36, 127});
@@ -248,7 +289,26 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 72, 127});
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 84, 127});
 					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 96, 127});
+					*/
+
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 56, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 57, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,58, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,59, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 60, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 61, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON, 62, 127});
+					device.getJe8086().addMidiEvent({synthLib::MidiEventSource::Host, synthLib::M_NOTEON,63, 127});
+
+					// Turn off super saw mix and detune
+					//device.getJe8086().setFader(devices::kFader_Osc1Ctrl1, 511);
+					//device.getJe8086().setFader(devices::kFader_Osc1Ctrl2, 511);
+
+					// Knapper virker. Osc balace virker
+					// detune/mix/range/fine/pulse width virker IKKE.
+
 					std::cout << "Demo playback started, starting recording to .wav file.\n";
+
 				}
 			}
 		});
@@ -276,7 +336,9 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 			// After a couple of fader key presses, the display changes to 
 			//"PERFORM * ", the star seems to indicate that the patch has changed. Good!
 			if (key != -1)
-				handleKeyPress(key, device.getJe8086());
+				handleKeyPress(key, device);
+
+			processPendingReleases(device.getJe8086());
 
 			device.process(inputs, outputs, blocksize, midiIn, midiOut);
 

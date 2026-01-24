@@ -108,9 +108,9 @@ namespace jeLib
 			kFader_TvaEnvS, // Ampl envelope sustain
 			kFader_TvaEnvR, // Ampl envelope release
 
-			// Osc 1
-			kFader_Osc1Ctrl2 = 40,
-			kFader_Osc1Ctrl1 = 44,
+			// Osc 1 
+			kFader_Osc1Ctrl2 = 40, //
+			kFader_Osc1Ctrl1 = 44, // Detune
 
 			kFader_FineTune = 46, // Osc 2 fine tune (wide when range is at min/max)
 
@@ -245,7 +245,7 @@ namespace jeLib
 					// distorted saw har fast frekvens, endres ikke når pitch endrer seg?
 					// Super saw shows up 7 different places. Not sure if it is summed in any way.
 					
-					postSample(asic0.readGRAM(0x80) >> 2, asic1.readGRAM(0x82) >> 2);
+					postSample(asic2.readGRAM(0x88) >> 2, asic2.readGRAM(0x8a) >> 2);
 
 					// Frequencies
 					// 0 - 80 og 1 80 har samme pitch
