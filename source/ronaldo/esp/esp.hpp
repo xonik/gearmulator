@@ -26,12 +26,12 @@ class ERAM;
 inline const char* getOpcodeName(uint8_t opc) {
 	// All strings are 16 chars, left-padded with spaces
 	switch (opc) {
-		case 0x00: return "            kNop";
-		case 0x04: return "     ? clear Acc";
+		case 0x00: return " A+=mpA*coeff>>s";
+		case 0x04: return "  A=mpA*coeff>>s";
 		case 0x08: return "      kStoreIRAM";
 		case 0x0C: return "      kStoreIRAM";
-		case 0x10: return "               ?";
-		case 0x14: return "               ?";
+		case 0x10: return " B+=mpA*coeff>>s";
+		case 0x14: return "  B=mpA*coeff>>s";
 		case 0x18: return "      kStoreIRAM";
 		case 0x1C: return "      kStoreIRAM";
 		case 0x20: return "       kReadGRAM";
@@ -59,6 +59,18 @@ inline const char* getOpcodeName(uint8_t opc) {
 		case 0x78: return " kInterpStoreNeg";
 		case 0x7C: return " kInterpStoreNeg";
 		default: return "   <Unknown OPC>";
+	}
+}
+
+// disassemble helper, gets default value for multiplier input A based on mem field
+inline const char* getMulInputAFromMem(uint8_t mem) {
+    switch (mem)
+	{
+		case 1: return "0x10";
+		case 2: return "0x400";
+		case 3: return "0x10000";
+		case 4: return "0x400000";
+		default: return "iram[mempos]";
 	}
 }
 
@@ -915,41 +927,6 @@ protected:
 			lastMul30 = (o.op == 0x30);
 		}
 	}
-
-	/*
-0x00	kNop
-0x04	? clear Acc
-0x08	kStoreIRAM
-0x0C	kStoreIRAM
-0x10	?
-0x14	?
-0x18	kStoreIRAM
-0x1C	kStoreIRAM
-0x20	kReadGRAM
-0x24	kReadGRAM
-0x28	Unknown
-0x2C	Unknown
-0x30	kMulCoef
-0x34	Special
-0x38	kStoreGRAM
-0x3C	kStoreGRAM
-0x40	kStoreIRAMUnsat
-0x44	kStoreIRAMUnsat
-0x48	kStoreIRAMRect
-0x4C	kStoreIRAMRect
-0x50	kSetCondition
-0x54	Unknown
-0x58	kStoreIRAM
-0x5C	kStoreIRAM
-0x60	kInterp
-0x64	kInterp
-0x68	kInterpStorePos
-0x6C	kInterpStorePos
-0x70	kInterp
-0x74	kInterp
-0x78	kInterpStoreNeg
-0x7C	kInterpStoreNeg
-*/
 
 	void disassemble(uint32_t address, FILE *f) {
 		// Reads from intmem
