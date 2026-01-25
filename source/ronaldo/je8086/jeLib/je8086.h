@@ -31,6 +31,7 @@ namespace jeLib
 
 		void setButton(devices::SwitchType _type, bool _pressed);
 		void setFader(devices::FaderType _type, int _value);
+		devices::MultiAsic& getAsics();
 
 	private:
 		static void onLedsChanged(devices::Port* _port);

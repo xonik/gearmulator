@@ -22,6 +22,46 @@ class ERAM;
 #include "esp_opt.hpp"
 
 
+// Lookup and print opcode name from hex value (based on list at line 880)
+inline const char* getOpcodeName(uint8_t opc) {
+	// All strings are 16 chars, left-padded with spaces
+	switch (opc) {
+		case 0x00: return "            kNop";
+		case 0x04: return "     ? clear Acc";
+		case 0x08: return "      kStoreIRAM";
+		case 0x0C: return "      kStoreIRAM";
+		case 0x10: return "               ?";
+		case 0x14: return "               ?";
+		case 0x18: return "      kStoreIRAM";
+		case 0x1C: return "      kStoreIRAM";
+		case 0x20: return "       kReadGRAM";
+		case 0x24: return "       kReadGRAM";
+		case 0x28: return "         Unknown";
+		case 0x2C: return "         Unknown";
+		case 0x30: return "        kMulCoef";
+		case 0x34: return "         Special";
+		case 0x38: return "      kStoreGRAM";
+		case 0x3C: return "      kStoreGRAM";
+		case 0x40: return " kStoreIRAMUnsat";
+		case 0x44: return " kStoreIRAMUnsat";
+		case 0x48: return "  kStoreIRAMRect";
+		case 0x4C: return "  kStoreIRAMRect";
+		case 0x50: return "   kSetCondition";
+		case 0x54: return "         Unknown";
+		case 0x58: return "      kStoreIRAM";
+		case 0x5C: return "      kStoreIRAM";
+		case 0x60: return "         kInterp";
+		case 0x64: return "         kInterp";
+		case 0x68: return " kInterpStorePos";
+		case 0x6C: return " kInterpStorePos";
+		case 0x70: return "         kInterp";
+		case 0x74: return "         kInterp";
+		case 0x78: return " kInterpStoreNeg";
+		case 0x7C: return " kInterpStoreNeg";
+		default: return "   <Unknown OPC>";
+	}
+}
+
 class DspAccumulator {
 public:
 	inline void reset() {for (int i = 0; i < delay; i++) hist[i] = 0; head = acc = 0;}
@@ -443,7 +483,7 @@ public:
 
 			if (newValue != oldValue) {
 				if (asicId == 0) {
-					printf("ESP::writeuC PMEM write asic=%d addr=%d newValue=0x%08x\n", asicId, addr, newValue);
+					//printf("ESP::writeuC PMEM write asic=%d addr=%d newValue=0x%08x\n", asicId, addr, newValue);
 				}
 				opt.setProgramDirty();
 			}
@@ -483,7 +523,7 @@ public:
 			if (old1 != new1 || old2 != new2)
 				if(asicId == 0){
 					//printf("ESP::writeuC coef update asic=%d addr=%d coef=0x%04x\n", asicId, addr, joinedCoef);
-					printf(",%d,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X ", joinedCoef, joinedCoef, newCoef, newCoef2, pmem[addr], pmem[addr+1], addr);
+					printf(",%d,0x%X,0x%X,0x%X,0x%X,0x%X,0x%X \n", joinedCoef, joinedCoef, newCoef, newCoef2, pmem[addr], pmem[addr+1], addr);
 				}
 
 			// opt.genProgram(this);
@@ -876,6 +916,41 @@ protected:
 		}
 	}
 
+	/*
+0x00	kNop
+0x04	? clear Acc
+0x08	kStoreIRAM
+0x0C	kStoreIRAM
+0x10	?
+0x14	?
+0x18	kStoreIRAM
+0x1C	kStoreIRAM
+0x20	kReadGRAM
+0x24	kReadGRAM
+0x28	Unknown
+0x2C	Unknown
+0x30	kMulCoef
+0x34	Special
+0x38	kStoreGRAM
+0x3C	kStoreGRAM
+0x40	kStoreIRAMUnsat
+0x44	kStoreIRAMUnsat
+0x48	kStoreIRAMRect
+0x4C	kStoreIRAMRect
+0x50	kSetCondition
+0x54	Unknown
+0x58	kStoreIRAM
+0x5C	kStoreIRAM
+0x60	kInterp
+0x64	kInterp
+0x68	kInterpStorePos
+0x6C	kInterpStorePos
+0x70	kInterp
+0x74	kInterp
+0x78	kInterpStoreNeg
+0x7C	kInterpStoreNeg
+*/
+
 	void disassemble(uint32_t address, FILE *f) {
 		// Reads from intmem
 		uint32_t opcode = 0;
@@ -900,6 +975,8 @@ protected:
 		const uint8_t mem = opcode & 0xff;
 		opcode >>= 8;
 		const uint8_t opc = (opcode << 2) & 0x7c;
+
+		fprintf(f, "  [op: 0x%02x, mem: 0x%02x, shift: 0x%02x, coeff: 0x%02x (%03d)]", opc, mem, shift, coeff, coeff);
 
 		char lastss[64]; strcpy(lastss, ss);
 
@@ -998,6 +1075,9 @@ protected:
 
 		col += fprintf(f, "              ");
 
+		fprintf(f, "[ ");
+		fprintf(f, getOpcodeName(opc));
+		fprintf(f, " ]   ");
 		fprintf(f, "%-4s %c, %c%s >> %d, %s\n", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
 	}
 	

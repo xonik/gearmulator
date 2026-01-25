@@ -106,6 +106,8 @@ namespace jeLib
 		faders.setFader(static_cast<int>(_type), _value);
 	}
 
+	devices::MultiAsic& Je8086::getAsics() { return asics; }
+
 	void Je8086::onLedsChanged(devices::Port*/* _port*/)
 	{
 		/*

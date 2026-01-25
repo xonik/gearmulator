@@ -12,6 +12,7 @@
 #include "jeLib/state.h"
 #include "synthLib/midiTypes.h"
 #include "synthLib/wavWriter.h"
+#include "esp/esp.hpp"
 
 using namespace jeLib;
 
@@ -59,6 +60,9 @@ namespace
 		devices::SwitchType button;
 		int cyclesRemaining;
 	};
+
+	//static int notes[8] = {60, 62, 64, 65, 67, 69, 71, 72};	
+	static int notes[8] = {60,60,60,60,60,60,60,60};	
 
 	std::vector<PendingButtonRelease> g_pendingReleases;
 	std::vector<synthLib::SMidiEvent> g_pendingMidiIn;  // Queue for MIDI events to send via device.process()
@@ -205,6 +209,34 @@ namespace
 				sendParameterChange(PerformanceCommon::KeyMode, 2);
 				std::cout << "KeyMode: SPLIT (2)\n";
 				break;
+			case 'u': // Dump all ASICs
+				device.getJe8086().getAsics().dump();
+				std::cout << "ASIC dumps written.\n";
+				break;
+			case 'n': // Increase all 8 notes by 1
+				for (int i = 0; i < 8; ++i) {
+					if (notes[i] < 127) ++notes[i];
+					addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
+				}
+				std::cout << "All notes increased by 1: ";
+				for (int i = 0; i < 8; ++i) std::cout << notes[i] << " ";
+				std::cout << std::endl;
+				break;
+			case 'b': // Decrease all 8 notes by 1
+				for (int i = 0; i < 8; ++i) {
+					if (notes[i] < 127) --notes[i];
+					addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
+				}
+				std::cout << "All notes decreased by 1: ";
+				for (int i = 0; i < 8; ++i) std::cout << notes[i] << " ";
+				std::cout << std::endl;
+				break;
+			case 'N': // Increase all 8 notes by 1
+				for (int i = 0; i < 8; ++i) {
+					addMidiEvent(synthLib::M_NOTEOFF, notes[i], 127);
+				}
+				std::cout << "All notes off\n";
+				break;
 
 		}
 	}
@@ -345,14 +377,10 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 					//device.getJe8086().setFader(devices::kFader_FineTune, 0);
 
 					// Route MIDI through device.process() like the plugin does
-					addMidiEvent(synthLib::M_NOTEON, 56, 127);
-					addMidiEvent(synthLib::M_NOTEON, 57, 127);
-					addMidiEvent(synthLib::M_NOTEON, 58, 127);
-					addMidiEvent(synthLib::M_NOTEON, 59, 127);
-					addMidiEvent(synthLib::M_NOTEON, 60, 127);
-					addMidiEvent(synthLib::M_NOTEON, 61, 127);
-					addMidiEvent(synthLib::M_NOTEON, 62, 127);
-					addMidiEvent(synthLib::M_NOTEON, 63, 127);
+					for (int i = 0; i < 8; ++i) {
+						addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
+					}					
+
 					// Knapper virker. Osc balace virker
 					// detune/mix/range/fine/pulse width virker IKKE.
 
