@@ -63,6 +63,32 @@ inline const char* getOpcodeName(uint8_t opc) {
 	}
 }
 
+// Lookup and print opcode name from hex value (based on list at line 880)
+inline const char* getAddressComment(uint32_t addr) {
+	// All strings are 16 chars, left-padded with spaces
+	switch (addr) {
+		case 0x0000: return "\n# Dump after setting note to 61, detune to 4 and mix to 424 \n";
+		case 0x0019: return "\n# Sets Osc2 range and fine \n";
+		case 0x0022: return "\n# Updated when pitch changes, first to 14336 then immediately back to 64\n";
+		case 0x0044: return "\n# Set oscillator balance\n";
+		case 0x0400: return "\n# Set X-mod depth\n";
+		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x041b: return "\n# Pitch changes here. Includes LFO from mcu\n";
+		case 0x041d: return "\n# Changes when changing pitch (inc LFO) (note 61: 16032 (0x3EA0), note 62: 1664 (0x680), line shows note 61):\n";
+		case 0x043c: return "\n# Sets mix value\n";
+		case 0x043f: return "\n# Sets detune value\n";
+		case 0x0442: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x0445: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		default: return "";
+	}
+	/*
+	no changes from PitchLfo2Depth, 
+	OscLfo1Depth changes pitch but no internal parameter.
+	Lfo1Rate and Lfo1Fade do not seem to have any effect at all.
+	
+	*/
+}
+
 
 // disassemble helper, gets default value for multiplier input A based on mem field
 inline const char* getMulInputAFromMem(uint8_t mem) {
@@ -1083,6 +1109,7 @@ protected:
 	}
 
 	void disassemble(uint32_t address, FILE *f) {
+		fprintf(f, getAddressComment(address));
 		// Reads from intmem
 		uint32_t opcode = 0;
 		for (int i = 0; i < 4; i++) opcode |= intmem[address * 4 + i] << (i * 8);

@@ -1,3 +1,5 @@
+
+# Dump after setting note to 61, detune to 4 and mix to 424 
 0000: 04 11 0d                                                | 0x04            kMac |   MUL  A,  #0x0d >> 6, 0x400000             |  A  = 0x400000 * 13 >> 6
 0001: 37 19 00                                                | 0x34         Special |   DMAC A,  #0x00 >> 6,                      |  A  = (lastMulA >> 7) * 0 >> 6
 0002: 03 6c 80                                                | 0x00            kMac |   MAC  A,  #0x80 >> 7, iram0[0xdb]          |  A += iram[0xdb]
@@ -32,6 +34,8 @@
 001f: 37 99 83                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B  = ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 0020: 33 60 64                                                | 0x30        kMulCoef |   MUL  A,  mulcoeff3 >> 7, sat(A)               |  iram[0xd8] = facA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000), facB = mulcoeffs[3], save facB to lastMulB, , A  = facA * (facB >> 16)) >> 7 (multiply with 8 MSB of B)
 0021: 37 18 64                                                | 0x34         Special |   DMAC A,  #0x64 >> 7,                      |  A  = ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
+
+# Updated when pitch changes, first to 14336 then immediately back to 64
 0022: 03 45 40                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0xd1]          |  A += iram[0xd1]
 0023: 1c 00 80            iram0[0x00] = sat(B)                | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B)
 0024: 33 4d 83                                                | 0x30        kMulCoef |   MAC  B,  mulcoeff4 >> 6, iram0[0xd3]          |  facA = iram[0xd3], facB = mulcoeffs[4], save facB to lastMulB, , B += facA * (facB >> 16)) >> 6 (multiply with 8 MSB of B)
@@ -298,8 +302,8 @@
 0129: 36 a0 00            mulcoeff4   = sat(A);               | 0x34         Special |   MAC  A,  #0x00 >> 7, iram0[0xa8]          |  
 012a: 5c c4 00            iram0[0x31] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  
 012b: 25 df 40                                                | 0x24       kReadGRAM |   MUL  B,  #0x40 >> 6, gram[0x77]           |  A  = gram[0x77]
-012c: 04 11 73                                                | 0x04            kMac |   MUL  A,  #0x73 >> 6, 0x400000             |  A  = 0x400000 * 115 >> 6
-012d: 37 19 66                                                | 0x34         Special |   DMAC A,  #0x66 >> 6,                      |  A  = (lastMulA >> 7) * 102 >> 6
+012c: 04 11 6a                                                | 0x04            kMac |   MUL  A,  #0x6a >> 6, 0x400000             |  A  = 0x400000 * 106 >> 6
+012d: 37 19 6d                                                | 0x34         Special |   DMAC A,  #0x6d >> 6,                      |  A  = (lastMulA >> 7) * 109 >> 6
 012e: 00 e8 80                                                | 0x00            kMac |   MAC  A,  #0x80 >> 7, iram0[0x3a]          |  A += iram[0x3a]
 012f: 5c c8 00            iram0[0x32] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  
 0130: 25 e7 40                                                | 0x24       kReadGRAM |   MUL  B,  #0x40 >> 6, gram[0x79]           |  A  = gram[0x79]
@@ -313,8 +317,8 @@
 0138: 5c d0 00            iram0[0x34] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  
 0139: 30 c4 60                                                | 0x30        kMulCoef |   MUL  A,  mulcoeff3 >> 7, iram0[0x31]          |  facA = iram[0x31], facB = mulcoeffs[3], save facB to lastMulB, , A  = facA * (facB >> 16)) >> 7 (multiply with 8 MSB of B)
 013a: 37 18 60                                                | 0x34         Special |   DMAC A,  #0x60 >> 7,                      |  A  = ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
-013b: 14 11 3e                                                | 0x14            kMac |   MUL  B,  #0x3e >> 6, 0x400000             |  B  = 0x400000 * 62 >> 6
-013c: 37 99 4d                                                | 0x34         Special |   DMAC B,  #0x4d >> 6,                      |  B  = (lastMulA >> 7) * 77 >> 6
+013b: 14 11 47                                                | 0x14            kMac |   MUL  B,  #0x47 >> 6, 0x400000             |  B  = 0x400000 * 71 >> 6
+013c: 37 99 13                                                | 0x34         Special |   DMAC B,  #0x13 >> 6,                      |  B  = (lastMulA >> 7) * 19 >> 6
 013d: 10 f0 80                                                | 0x10            kMac |   MAC  B,  #0x80 >> 7, iram0[0x3c]          |  B += iram[0x3c]
 013e: 58 c4 00            iram0[0x31] = sat(A)                | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  
 013f: 30 c8 80                                                | 0x30        kMulCoef |   MUL  A,  mulcoeff4 >> 7, iram0[0x32]          |  facA = iram[0x32], facB = mulcoeffs[4], save facB to lastMulB, , A  = facA * (facB >> 16)) >> 7 (multiply with 8 MSB of B)
@@ -775,6 +779,8 @@
 0404: 00 14 ed 40                                             | 0x14            kMac |   MUL  B,  #0x40 >> 6, iram1[0x3b]          |  B  = iram[0x3b]
 0405: 00 10 f0 88                                             | 0x10            kMac |   MAC  B,  #0x88 >> 7, iram1[0x3c]          |  B += iram[0x3c] * 136 >> 7
 0406: 00 37 98 41                                             | 0x34         Special |   DMAC B,  #0x41 >> 7,                      |  B  = (lastMulA >> 7) * 65 >> 7
+
+# Updated when pitch changes, first to 14336 then immediately back to 32
 0407: 00 10 f8 77                                             | 0x10            kMac |   MAC  B,  #0x77 >> 7, iram1[0x3e]          |  B += iram[0x3e] * 119 >> 7
 0408: 00 37 98 3e                                             | 0x34         Special |   DMAC B,  #0x3e >> 7,                      |  B  = (lastMulA >> 7) * 62 >> 7
 0409: 00 08 d9 40            iram1[0x36] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A)
@@ -795,8 +801,12 @@
 0418: 00 04 10 21                                             | 0x04            kMac |   MUL  A,  #0x21 >> 7, 0x400000             |  A  = 0x400000 * 33 >> 7
 0419: 00 37 18 43                                             | 0x34         Special |   DMAC A,  #0x43 >> 7,                      |  A  = (lastMulA >> 7) * 67 >> 7
 041a: 40 00 68 80                                             | 0x00            kMac |   MAC  A,  #0x80 >> 7, iram1[0x1a]          |  A += iram[0x1a]
+
+# Pitch changes here. Looks like we're running MUL + DMAC three times to create a 24 bit pitch value?
 041b: 01 1c 00 01            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x01 >> 7, sat(B)               |  B  = sat(B) >> 7
 041c: a1 10 61 40                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0x18]          |  B += iram[0x18]
+
+# Changes when changing pitch (note 61: 16032 (0x3EA0), note 62: 1664 (0x680), line shows note 61):
 041d: 01 08 00 00            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x00 >> 7, sat(A)               |  A  = 0
 041e: 01 37 18 40                                             | 0x34         Special |   DMAC A,  #0x40 >> 7,                      |  A  = (lastMulA >> 7) * 64 >> 7
 041f: 00 00 69 40                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x1a]          |  A += iram[0x1a]
@@ -828,15 +838,23 @@
 0439: 00 58 00 ff            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0xff >> 7, sat(A)               |  
 043a: 00 37 18 40                                             | 0x34         Special |   DMAC A,  #0x40 >> 7,                      |  A  = (lastMulA >> 7) * 64 >> 7
 043b: 00 04 01 40                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x00]          |  A  = iram[0x00]
+
+# Sets mix value
 043c: 80 37 19 00                                             | 0x34         Special |   DMAC A,  #0x00 >> 6,                      |  A  = (lastMulA >> 7) * 0 >> 6
 043d: 00 58 6c 00            iram1[0x1b] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  
 043e: 00 5c c0 00            iram1[0x30] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  
+
+# Sets detune value
 043f: 80 37 2c 00            ERAMLAT = accA;                  | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xcb]          |  eram.eramWriteLatch = sat(A)
 0440: 00 04 40 70                                             | 0x04            kMac |   MUL  A,  #0x70 >> 7, iram1[0x10]          |  A  = iram[0x10] * 112 >> 7
 0441: 00 00 bd 00                                             | 0x00            kMac |   MAC  A,  #0x00 >> 6, iram1[0x2f]          |  A += 0
+
+# Updated when pitch changes, first to 14336 then immediately back to 32
 0442: 00 00 c5 40                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x31]          |  A += iram[0x31]
 0443: 00 14 40 70                                             | 0x14            kMac |   MUL  B,  #0x70 >> 7, iram1[0x10]          |  B  = iram[0x10] * 112 >> 7
 0444: 00 10 bd 40                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0x2f]          |  B += iram[0x2f]
+
+# Updated when pitch changes, first to 14336 then immediately back to 32
 0445: 00 10 c5 00                                             | 0x10            kMac |   MAC  B,  #0x00 >> 6, iram1[0x31]          |  B += 0
 0446: 00 25 cf 40                                             | 0x24       kReadGRAM |   MUL  B,  #0x40 >> 6, gram[0x73]           |  A  = gram[0x73]
 0447: 00 58 44 00            iram1[0x11] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  

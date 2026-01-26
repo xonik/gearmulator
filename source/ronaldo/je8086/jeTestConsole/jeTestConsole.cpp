@@ -174,7 +174,7 @@ namespace
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
 			case 'D':  // Osc1Control1 increment by 1
-				if (g_faderOsc1Ctrl1 < 127) ++g_faderOsc1Ctrl1;
+				if (g_faderOsc1Ctrl1 > 0) --g_faderOsc1Ctrl1;
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, g_faderOsc1Ctrl1);
 				//std::cout << "Osc1 Control1: " << g_faderOsc1Ctrl1 << "\n";
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
@@ -185,8 +185,9 @@ namespace
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'M':  // Osc1Control2 maximum (127)
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
-				std::cout << "Osc1 Control2: 127 (max)\n";
+				if (g_faderOsc1Ctrl2 > 0) --g_faderOsc1Ctrl2;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
+				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'z': 
 				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 127);
@@ -227,7 +228,7 @@ namespace
 					if (notes[i] < 127) --notes[i];
 					addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
 				}
-				std::cout << "All notes decreased by 1: ";
+				std::cout << "All notes decrease by 1: ";
 				for (int i = 0; i < 8; ++i) std::cout << notes[i] << " ";
 				std::cout << std::endl;
 				break;
