@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <stdint.h>
 #include <stdio.h>
 #include <algorithm>
@@ -26,41 +27,42 @@ class ERAM;
 inline const char* getOpcodeName(uint8_t opc) {
 	// All strings are 16 chars, left-padded with spaces
 	switch (opc) {
-		case 0x00: return " A+=mpA*coeff>>s";
-		case 0x04: return "  A=mpA*coeff>>s";
-		case 0x08: return "      kStoreIRAM";
-		case 0x0C: return "      kStoreIRAM";
-		case 0x10: return " B+=mpA*coeff>>s";
-		case 0x14: return "  B=mpA*coeff>>s";
-		case 0x18: return "      kStoreIRAM";
-		case 0x1C: return "      kStoreIRAM";
-		case 0x20: return "       kReadGRAM";
-		case 0x24: return "       kReadGRAM";
-		case 0x28: return "         Unknown";
-		case 0x2C: return "         Unknown";
-		case 0x30: return "        kMulCoef";
-		case 0x34: return "         Special";
-		case 0x38: return "      kStoreGRAM";
-		case 0x3C: return "      kStoreGRAM";
-		case 0x40: return " kStoreIRAMUnsat";
-		case 0x44: return " kStoreIRAMUnsat";
-		case 0x48: return "  kStoreIRAMRect";
-		case 0x4C: return "  kStoreIRAMRect";
-		case 0x50: return "   kSetCondition";
-		case 0x54: return "         Unknown";
-		case 0x58: return "      kStoreIRAM";
-		case 0x5C: return "      kStoreIRAM";
-		case 0x60: return "         kInterp";
-		case 0x64: return "         kInterp";
-		case 0x68: return " kInterpStorePos";
-		case 0x6C: return " kInterpStorePos";
-		case 0x70: return "         kInterp";
-		case 0x74: return "         kInterp";
-		case 0x78: return " kInterpStoreNeg";
-		case 0x7C: return " kInterpStoreNeg";
+		case 0x00: return "0x00 A+=mpA*coeff>>s";
+		case 0x04: return "0x04  A=mpA*coeff>>s";
+		case 0x08: return "0x08      kStoreIRAM";
+		case 0x0C: return "0x0C      kStoreIRAM";
+		case 0x10: return "0x10 B+=mpA*coeff>>s";
+		case 0x14: return "0x14  B=mpA*coeff>>s";
+		case 0x18: return "0x18      kStoreIRAM";
+		case 0x1C: return "0x1C      kStoreIRAM";
+		case 0x20: return "0x20       kReadGRAM";
+		case 0x24: return "0x24       kReadGRAM";
+		case 0x28: return "0x28         Unknown";
+		case 0x2C: return "0x2C         Unknown";
+		case 0x30: return "0x30        kMulCoef";
+		case 0x34: return "0x34         Special";
+		case 0x38: return "0x38      kStoreGRAM";
+		case 0x3C: return "0x3C      kStoreGRAM";
+		case 0x40: return "0x40 kStoreIRAMUnsat";
+		case 0x44: return "0x44 kStoreIRAMUnsat";
+		case 0x48: return "0x48  kStoreIRAMRect";
+		case 0x4C: return "0x4C  kStoreIRAMRect";
+		case 0x50: return "0x50   kSetCondition";
+		case 0x54: return "0x54         Unknown";
+		case 0x58: return "0x58      kStoreIRAM";
+		case 0x5C: return "0x5C      kStoreIRAM";
+		case 0x60: return "0x60         kInterp";
+		case 0x64: return "0x64         kInterp";
+		case 0x68: return "0x68 kInterpStorePos";
+		case 0x6C: return "0x6C kInterpStorePos";
+		case 0x70: return "0x70         kInterp";
+		case 0x74: return "0x74         kInterp";
+		case 0x78: return "0x78 kInterpStoreNeg";
+		case 0x7C: return "0x7C kInterpStoreNeg";
 		default: return "   <Unknown OPC>";
 	}
 }
+
 
 // disassemble helper, gets default value for multiplier input A based on mem field
 inline const char* getMulInputAFromMem(uint8_t mem) {
@@ -70,8 +72,58 @@ inline const char* getMulInputAFromMem(uint8_t mem) {
 		case 2: return "0x400";
 		case 3: return "0x10000";
 		case 4: return "0x400000";
-		default: return "iram[mempos]";
+		default: {
+			static char buf[32];
+			snprintf(buf, sizeof(buf), "iram[0x%02x]", mem);
+			return buf;
+		}
 	}
+}
+
+// Get opcode description with detailed operation explanation
+inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_t shiftbits) {
+
+	const int shifts[4] = {7, 6, 5, 3};
+	const int shift = shifts[shiftbits & 3];
+	const char* acc = (shiftbits & 2) ? "B" : "A";
+	const int gramShift = (shiftbits & 1) ? 6 : 7;
+
+    static char buf[256];
+    switch (opc) {
+        case 0x00: snprintf(buf, sizeof(buf), "A += %s * %d >> %d", getMulInputAFromMem(mem), coeff, shift); return buf;
+        case 0x04: snprintf(buf, sizeof(buf), "A  = %s * %d >> %d", getMulInputAFromMem(mem), coeff, shift); return buf;
+        case 0x08: snprintf(buf, sizeof(buf), "A  = sat(A) * %d >> %d", coeff, shift); return buf;
+        case 0x0C: snprintf(buf, sizeof(buf), "A  = sat(B) * %d >> %d", coeff, shift); return buf;
+        case 0x10: snprintf(buf, sizeof(buf), "B += %s * %d >> %d", getMulInputAFromMem(mem), coeff, shift); return buf;
+        case 0x14: snprintf(buf, sizeof(buf), "B  = %s * %d >> %d", getMulInputAFromMem(mem), coeff, shift); return buf;
+        case 0x18: snprintf(buf, sizeof(buf), "B  = sat(A) * %d >> %d", coeff, shift); return buf;
+        case 0x1C: snprintf(buf, sizeof(buf), "B  = sat(B) * %d >> %d", coeff, shift); return buf;
+        case 0x20: snprintf(buf, sizeof(buf), "%s += gram[0x%02x] * %d >> %d", acc, mem, coeff, gramShift); return buf;
+        case 0x24: snprintf(buf, sizeof(buf), "%s  = gram[0x%02x] * %d >> %d", acc, mem, coeff, gramShift); return buf;
+        case 0x28: return "N/A";
+        case 0x2C: return "N/A";
+        case 0x30: return "<---";
+        case 0x34: return "<---";
+        case 0x38: snprintf(buf, sizeof(buf), "A += sat(A) * %d >> %d", mem, coeff, shift); return buf;
+        case 0x3C: snprintf(buf, sizeof(buf), "A += sat(B) * %d >> %d", mem, coeff, shift); return buf;
+        case 0x40: snprintf(buf, sizeof(buf), "A += raw(A) * %d >> %d", coeff, shift); return buf;
+        case 0x44: snprintf(buf, sizeof(buf), "A  = raw(A) * %d >> %d", coeff, shift); return buf;
+        case 0x48: snprintf(buf, sizeof(buf), "A += rect(sat(A)) * %d >> %d", coeff, shift); return buf;
+        case 0x4C: snprintf(buf, sizeof(buf), "A  = rect(sat(A)) * %d >> %d", coeff, shift); return buf;
+        case 0x50: return "setcondition true, clear A. Some skipfield magic";
+        case 0x54: return "N/A";
+        case 0x58: snprintf(buf, sizeof(buf), "A += sat(A) * %d >> %d", coeff, shift); return buf;
+        case 0x5C: snprintf(buf, sizeof(buf), "B += sat(B) * %d >> %d", coeff, shift); return buf;
+        case 0x60: snprintf(buf, sizeof(buf), "A += (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
+        case 0x64: snprintf(buf, sizeof(buf), "A  = (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
+        case 0x68: snprintf(buf, sizeof(buf), "A += (1-A)*%d if A is positive, %d * (A with sign removed) if negative", coeff, coeff); return buf;
+        case 0x6C: snprintf(buf, sizeof(buf), "A  = (1-A)*%d if A is positive, %d * (A with sign removed) if negative", coeff, coeff); return buf;
+        case 0x70: snprintf(buf, sizeof(buf), "A += (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
+        case 0x74: snprintf(buf, sizeof(buf), "A  = (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
+        case 0x78: snprintf(buf, sizeof(buf), "A += (1-A)*%d >> %d if A is negative, sat(A) * %d >> %d if positive", mem, coeff, shift, coeff, shift); return buf;
+        case 0x7C: snprintf(buf, sizeof(buf), "A  = (1-sat(A))*%d >> %d if A is negative, sat(A) * %d >> %d if positive", mem, coeff, shift, coeff, shift); return buf;
+        default: return "<Unknown OPC>";
+    }
 }
 
 class DspAccumulator {
@@ -901,7 +953,7 @@ protected:
 				case 0x38: case 0x3c: snprintf(mulA, 32, "sat(%s)", readAcc); fprintf(f, "setGram(0x%02x, %s);\n", o.mem, mulA); break;
 				
 				case 0x40: case 0x44: snprintf(mulA, 32, "raw(%s)", readAcc); fprintf(f, "setIram(0x%02x, %s);\n", o.mem, mulA); break;
-				case 0x48: case 0x4c: snprintf(mulA, 32, "rect(%s)", readAcc); fprintf(f, "setIram(0x%02x, %s);\n", o.mem, mulA); break;
+				case 0x48: case 0x4c: snprintf(mulA, 32, "rect(sat(%s))", readAcc); fprintf(f, "setIram(0x%02x, %s);\n", o.mem, mulA); break;
 				
 				case 0x50: fprintf(f, "!!!COMPARE!!!\n"); setcondition = true; break;
 				case 0x54: fprintf(f, "Mysterious opcode 54 at pc = %04x\n", pc - 1); break; // TODO: what is this?
@@ -953,7 +1005,7 @@ protected:
 		opcode >>= 8;
 		const uint8_t opc = (opcode << 2) & 0x7c;
 
-		fprintf(f, "  [op: 0x%02x, mem: 0x%02x, shift: 0x%02x, coeff: 0x%02x (%03d)]", opc, mem, shift, coeff, coeff);
+		//fprintf(f, "  [op: 0x%02x, mem: 0x%02x, shift: 0x%02x, coeff: 0x%02x (%03d)]", opc, mem, shift, coeff, coeff);
 
 		char lastss[64]; strcpy(lastss, ss);
 
@@ -981,12 +1033,12 @@ protected:
 		{
 			case 0x00: break;
 			case 0x04: macop = "MUL"; break;
-			case 0x08: macop = "MUL"; col += fprintf(f, "STSATA %s ", ss); strcpy(ss, "accA(t-3)"); break;
-			case 0x0c: macop = "MUL"; col += fprintf(f, "STSATB %s ", ss); strcpy(ss, "accB(t-3)"); break;
+			case 0x08: macop = "MUL"; col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
+			case 0x0c: macop = "MUL"; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
 			case 0x10: acc = true; break;
 			case 0x14: macop = "MUL"; acc = true; break;
-			case 0x18: macop = "MUL"; acc = true; col += fprintf(f, "STSATA %s ", ss); strcpy(ss, "accA(t-3)"); break;
-			case 0x1c: macop = "MUL"; acc = true; col += fprintf(f, "STSATB %s ", ss); strcpy(ss, "accB(t-3)"); break;
+			case 0x18: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
+			case 0x1c: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
 			case 0x20: acc = shift & 2; shift &= 1; snprintf(ss, sizeof(ss), "gram%s", ostr); break;
 			case 0x24: acc = shift & 2; shift &= 1; snprintf(ss, sizeof(ss), "gram%s", ostr); macop = "MUL"; break;
 			case 0x28: macop = "<UNUSED>"; break;
@@ -995,7 +1047,7 @@ protected:
 			{
 				acc = (coeff & 2);
 				if (!(coeff & 1)) macop = "MUL";
-				if (coeff & 4) strcpy(ss, "accA(t-3)");
+				if (coeff & 4) strcpy(ss, "sat(A)");
 				nve = (coeff & 8);
 				if (coeff & 16) col += fprintf(f, "<Unknown bit 4 for op 0x30>");
 				snprintf(cstr, sizeof(cstr), "mulcoeff%d", (coeff >> 5));
@@ -1004,7 +1056,7 @@ protected:
 			case 0x34: /// TODO:
 			{
 				if (mem < 0xa0 || (mem & 0xf0) == 0xb0) col += fprintf(f, "<UNEXPECTED mem %02x for op 0x34>", mem);
-				if (mem >= 0xa0 && mem < 0xb0) col += fprintf(f,"mulcoeff%d = acc%c(t-3);", (mem >> 1) & 7, (mem & 1) ? 'B': 'A');
+				if (mem >= 0xa0 && mem < 0xb0) col += fprintf(f,"mulcoeff%d   = sat(%c);", (mem >> 1) & 7, (mem & 1) ? 'B': 'A');
 				if (mem >= 0xc0)
 				{
 					int sr = mem & 15;
@@ -1028,34 +1080,37 @@ protected:
 				}
 				break;
 			}
-			case 0x38: col += fprintf(f, "gram%s = accA(t-3);", ostr); strcpy(ss,"accA(t-3)"); break;
-			case 0x3c: col += fprintf(f, "gram%s = accB(t-3);", ostr); strcpy(ss,"accB(t-3)"); break;
-			case 0x40: col += fprintf(f, "STA %s ", ss); break;
-			case 0x44: macop = "MUL";  col += fprintf(f, "STA %s ", ss); break;
-			case 0x48: col += fprintf(f, "RECTA %s ", ss); strcpy(ss, "accA(t-3)"); break;
-			case 0x4c: macop = "MUL"; col += fprintf(f, "RECTA %s ", ss); strcpy(ss, "accA(t-3)");  break;
+			case 0x38: col += fprintf(f, "gram%s  = sat(A);", ostr); strcpy(ss,"sat(A)"); break;
+			case 0x3c: col += fprintf(f, "gram%s  = sat(B);", ostr); strcpy(ss,"sat(B)"); break;
+			case 0x40: col += fprintf(f, "%s = A", ss); break;
+			case 0x44: macop = "MUL";  col += fprintf(f, "%s = A ", ss); break;
+			case 0x48: col += fprintf(f, "%s = rect(sat(A)) ", ss); strcpy(ss, "sat(A)"); break;
+			case 0x4c: macop = "MUL"; col += fprintf(f, "%s = rect(sat(A)) ", ss); strcpy(ss, "sat(A)");  break;
 			case 0x50: macop = "CMP"; break;
 			case 0x54: col += fprintf(f, "<MYSTERIOUS OP 54>"); break;
-			case 0x58: col += fprintf(f, "STSATA %s ", ss); strcpy(ss, "accA(t-3)"); break;
-			case 0x5c: acc = true; col += fprintf(f, "STSATB %s ", ss); strcpy(ss, "accB(t-3)"); break;
+			case 0x58: col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
+			case 0x5c: acc = true; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
 			case 0x70:
 			case 0x60: snprintf(ss, sizeof(ss), "~%s & 0x7fffff", temp); break;
 			case 0x74:
 			case 0x64: macop = "MUL"; snprintf(ss, sizeof(ss), "~%s & 0x7fffff", temp); break;
-			case 0x68: col += fprintf(f, "STSATA %s", ss); strcpy(ss, "mangle_pve(accA(t-3))"); break;
-			case 0x6c: macop = "MUL"; col += fprintf(f, "STSATA %s", ss); strcpy(ss, "mangle_pve(accA(t-3))"); break;
-			case 0x78: col += fprintf(f, "STSATA %s", ss); strcpy(ss, "abs(accA(t-3))"); break;
-			case 0x7c: macop = "MUL"; col += fprintf(f, "STSATA %s", ss); strcpy(ss, "abs(accA(t-3))"); break;
+			case 0x68: col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "mangle_pve(sat(A))"); break;
+			case 0x6c: macop = "MUL"; col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "mangle_pve(sat(A))"); break;
+			case 0x78: col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "abs(sat(A))"); break;
+			case 0x7c: macop = "MUL"; col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "abs(sat(A))"); break;
 			default: col += fprintf(f, "/* opc:%02x */ ", opc); break;
 		}
 		while (col < 60) col += fprintf(f, " ");
 
-		col += fprintf(f, "              ");
+		col += fprintf(f, "  ");
 
-		fprintf(f, "[ ");
-		fprintf(f, getOpcodeName(opc));
-		fprintf(f, " ]   ");
-		fprintf(f, "%-4s %c, %c%s >> %d, %s\n", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
+		fprintf(f, "| ");
+		fprintf(f, "%-16s", getOpcodeName(opc));
+		fprintf(f, " |   ");		
+		fprintf(f, "%-4s %c, %c%s >> %d, %-19s", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
+		fprintf(f, "  |  ");
+		fprintf(f, getOpcodeDesc(opc, mem, coeff, shift));
+		fprintf(f, "\n");
 	}
 	
 	ESPCore<lg2eram_size> core0, core1;
@@ -1065,4 +1120,5 @@ protected:
 	uint8_t program_writing_word[4] {};
 	uint8_t intmem[0x4000] = {0};
 	SharedState<lg2eram_size> shared;
+
 };
