@@ -63,29 +63,42 @@ inline const char* getOpcodeName(uint8_t opc) {
 	}
 }
 
+/*
+Etter osc2 waveform = 0, mens osc1 control1 and 2 er satt til 1, så endres
+0x87, og så endres 82 for*/
+
 // Lookup and print opcode name from hex value (based on list at line 880)
 inline const char* getAddressComment(uint32_t addr) {
 	// All strings are 16 chars, left-padded with spaces
 	switch (addr) {
 		case 0x0000: return "\n# Dump after setting note to 61, detune to 4 and mix to 424 \n";
-		case 0x0019: return "\n# Sets Osc2 range and fine \n";
+		case 0x0005: return "\n# Ring modulator start \n";
+		case 0x0008: return "# Ring modulator end\n\n";
+		case 0x0019: return "\n# Sets Osc2 range and fine, and affected by OscLFO1Depth \n";
 		case 0x0022: return "\n# Updated when pitch changes, first to 14336 then immediately back to 64\n";
 		case 0x0044: return "\n# Set oscillator balance\n";
+		case 0x0068: return "\n# Osc 2 sync start\n";
+		case 0x006b: return "\n# Osc 2 start\n";
+		case 0x00b2: return "# Osc 2 sync end\n\n";
+		case 0x00b9: return "# Osc 2 end\n\n";
 		case 0x0400: return "\n# Set X-mod depth\n";
 		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x041b: return "\n# Pitch changes here. Includes LFO from mcu\n";
-		case 0x041d: return "\n# Changes when changing pitch (inc LFO) (note 61: 16032 (0x3EA0), note 62: 1664 (0x680), line shows note 61):\n";
-		case 0x043c: return "\n# Sets mix value\n";
+		case 0x041b: return "\n# Pitch changes here. Includes LFO from mcu, affected by Oscillator shift\n";
+		case 0x041d: return "\n# Changes when changing pitch (inc LFO), affected by Oscillator shift\n";
+		case 0x043c: return "\n# Osc 1 start\n# Sets mix value\n";
 		case 0x043f: return "\n# Sets detune value\n";
 		case 0x0442: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
 		case 0x0445: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1\n";
+		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
+		case 0x049e: return "# Osc 1 end\n\n\n";
 		default: return "";
 	}
 	/*
 	no changes from PitchLfo2Depth, 
 	OscLfo1Depth changes pitch but no internal parameter.
 	Lfo1Rate and Lfo1Fade do not seem to have any effect at all.
-	
+
 	*/
 }
 
@@ -195,7 +208,7 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_
 				return ""; // loads mulcoeff only, coeff is always 0 it seems
 			} else if (mem >= 0xc0) {
 				const char* accChar = (mem & 0x20) ? "B" : "A";
-				const char* clrChar = (mem & 0x10) ? "+" : " ";
+				const char* clrChar = (mem & 0x10) ? " " : "+";
 				switch (mem & 0xf)
 				{
 					case 0x0: snprintf(buf, sizeof(buf), "If %s=0 jump to 0x%04x", accChar, coeff); return buf;
@@ -205,7 +218,8 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_
 					case 0x4: return "Set INT pins";
 					case 0x6: {
 						if(lastWasOp30){
-							snprintf(buf, sizeof(buf), "%s %s= ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> %d", accChar, clrChar, shift); return buf;							
+							//snprintf(buf, sizeof(buf), "%s %s= ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> %d", accChar, clrChar, shift); return buf;													
+							snprintf(buf, sizeof(buf), "%s: Increase multiplication precision", accChar); return buf;
 						} else {
 							snprintf(buf, sizeof(buf), "%s %s= (lastMulA >> 7) * %d >> %d", accChar, clrChar, coeff, shift); return buf;
 						}
@@ -387,6 +401,10 @@ public:
 
 	void sync() {
 		pc = 0;
+		// Iram pos moves back by 1 on each sample tick, but within each sample reading and writing
+		// to the same offset will work on the same memory location / value.
+		// While working as "normal" memory within a single sample, it also means that it is possible
+		// to use IRAM as a delay line, reading calculations from older samples by using higher offsets.
 		iramPos = (iramPos - 1) & IRAM_MASK;
 	}
 	
@@ -673,7 +691,7 @@ public:
 
 			if (newValue != oldValue) {
 				if (asicId == 0) {
-					//printf("ESP::writeuC PMEM write asic=%d addr=%d newValue=0x%08x\n", asicId, addr, newValue);
+					printf("ESP::writeuC PMEM write asic=%d addr=0x%04x newValue=0x%08x\n", asicId, addr, newValue);
 				}
 				opt.setProgramDirty();
 			}
@@ -1115,7 +1133,7 @@ protected:
 		for (int i = 0; i < 4; i++) opcode |= intmem[address * 4 + i] << (i * 8);
 		opcode &= 0xfffffff;
 		int col = 0;
-		col += fprintf(f, "%04x: ", address);
+		col += fprintf(f, "%04x; ", address);
 		if (address >= 1024)
 		{
 			const uint8_t dram = (opcode >> 23) & 0x1f;
@@ -1209,8 +1227,8 @@ protected:
 				}
 				break;
 			}
-			case 0x38: col += fprintf(f, "gram%s  = sat(A);", ostr); strcpy(ss,"sat(A)"); break;
-			case 0x3c: col += fprintf(f, "gram%s  = sat(B);", ostr); strcpy(ss,"sat(B)"); break;
+			case 0x38: col += fprintf(f, "gram%s  = sat(A) ", ostr); strcpy(ss,"sat(A)"); break;
+			case 0x3c: col += fprintf(f, "gram%s  = sat(B) ", ostr); strcpy(ss,"sat(B)"); break;
 			case 0x40: col += fprintf(f, "%s = A", ss); break;
 			case 0x44: macop = "MUL";  col += fprintf(f, "%s = A ", ss); break;
 			case 0x48: col += fprintf(f, "%s = rect(sat(A)) ", ss); strcpy(ss, "sat(A)"); break;

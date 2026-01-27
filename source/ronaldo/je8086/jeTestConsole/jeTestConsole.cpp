@@ -64,6 +64,182 @@ namespace
 	//static int notes[8] = {60, 62, 64, 65, 67, 69, 71, 72};	
 	static int notes[8] = {60,60,60,60,60,60,60,60};	
 
+	// Parameter cycling state
+	struct PatchParam {
+		Patch param;
+		const char* name;
+	};
+
+	// All Patch enum values (excluding PatchName1-16)
+	constexpr PatchParam g_patchParams[] = {
+		{Patch::Lfo1Waveform, "Lfo1Waveform"},
+		{Patch::Lfo1Rate, "Lfo1Rate"},
+		{Patch::Lfo1Fade, "Lfo1Fade"},
+		{Patch::Lfo2Rate, "Lfo2Rate"},
+		{Patch::Lfo2DepthSelect, "Lfo2DepthSelect"},
+		{Patch::RingModulatorSwitch, "RingModulatorSwitch"},
+		{Patch::CrossModulationDepth, "CrossModulationDepth"},
+		{Patch::OscillatorBalance, "OscillatorBalance"},
+		{Patch::Lfo1AndEnvelopeDestination, "Lfo1AndEnvelopeDestination"},
+		{Patch::OscLfo1Depth, "OscLfo1Depth"},
+		{Patch::PitchLfo2Depth, "PitchLfo2Depth"},  // 0x1A - start cycling from here (index 10)
+		{Patch::PitchEnvelopeDepth, "PitchEnvelopeDepth"},
+		{Patch::PitchEnvelopeAttackTime, "PitchEnvelopeAttackTime"},
+		{Patch::PitchEnvelopeDecayTime, "PitchEnvelopeDecayTime"},
+		{Patch::Osc1Waveform, "Osc1Waveform"},
+		{Patch::Osc1Control1, "Osc1Control1"},
+		{Patch::Osc1Control2, "Osc1Control2"},
+		{Patch::Osc2Waveform, "Osc2Waveform"},
+		{Patch::Osc2SyncSwitch, "Osc2SyncSwitch"},
+		{Patch::Osc2Range, "Osc2Range"},
+		{Patch::Osc2FineWide, "Osc2FineWide"},
+		{Patch::Osc2Control1, "Osc2Control1"},
+		{Patch::Osc2Control2, "Osc2Control2"},
+		{Patch::FilterType, "FilterType"},
+		{Patch::CutoffSlope, "CutoffSlope"},
+		{Patch::CutoffFrequency, "CutoffFrequency"},
+		{Patch::Resonance, "Resonance"},
+		{Patch::CutoffFrequencyKeyFollow, "CutoffFrequencyKeyFollow"},
+		{Patch::FilterLfo1Depth, "FilterLfo1Depth"},
+		{Patch::FilterLfo2Depth, "FilterLfo2Depth"},
+		{Patch::FilterEnvelopeDepth, "FilterEnvelopeDepth"},
+		{Patch::FilterEnvelopeAttackTime, "FilterEnvelopeAttackTime"},
+		{Patch::FilterEnvelopeDecayTime, "FilterEnvelopeDecayTime"},
+		{Patch::FilterEnvelopeSustainLevel, "FilterEnvelopeSustainLevel"},
+		{Patch::FilterEnvelopeReleaseTime, "FilterEnvelopeReleaseTime"},
+		{Patch::AmpLevel, "AmpLevel"},
+		{Patch::AmpLfo1Depth, "AmpLfo1Depth"},
+		{Patch::AmpLfo2Depth, "AmpLfo2Depth"},
+		{Patch::AmpEnvelopeAttackTime, "AmpEnvelopeAttackTime"},
+		{Patch::AmpEnvelopeDecayTime, "AmpEnvelopeDecayTime"},
+		{Patch::AmpEnvelopeSustainLevel, "AmpEnvelopeSustainLevel"},
+		{Patch::AmpEnvelopeReleaseTime, "AmpEnvelopeReleaseTime"},
+		{Patch::AutoPanManualPanSwitch, "AutoPanManualPanSwitch"},
+		{Patch::ToneControlBass, "ToneControlBass"},
+		{Patch::ToneControlTreble, "ToneControlTreble"},
+		{Patch::MultiEffectsType, "MultiEffectsType"},
+		{Patch::MultiEffectsLevel, "MultiEffectsLevel"},
+		{Patch::DelayType, "DelayType"},
+		{Patch::DelayTime, "DelayTime"},
+		{Patch::DelayFeedback, "DelayFeedback"},
+		{Patch::DelayLevel, "DelayLevel"},
+		{Patch::BendRangeUp, "BendRangeUp"},
+		{Patch::BendRangeDown, "BendRangeDown"},
+		{Patch::PortamentoSwitch, "PortamentoSwitch"},
+		{Patch::PortamentoTime, "PortamentoTime"},
+		{Patch::MonoSwitch, "MonoSwitch"},
+		{Patch::LegatoSwitch, "LegatoSwitch"},
+		{Patch::OscillatorShift, "OscillatorShift"},
+		{Patch::ControlLfo1Rate, "ControlLfo1Rate"},
+		{Patch::ControlLfo1Fade, "ControlLfo1Fade"},
+		{Patch::ControlLfo2Rate, "ControlLfo2Rate"},
+		{Patch::ControlCrossModulationDepth, "ControlCrossModulationDepth"},
+		{Patch::ControlOscillatorBalance, "ControlOscillatorBalance"},
+		{Patch::ControlPitchLfo1Depth, "ControlPitchLfo1Depth"},
+		{Patch::ControlPitchLfo2Depth, "ControlPitchLfo2Depth"},
+		{Patch::ControlPitchEnvelopeDepth, "ControlPitchEnvelopeDepth"},
+		{Patch::ControlPitchEnvelopeAttackTime, "ControlPitchEnvelopeAttackTime"},
+		{Patch::ControlPitchEnvelopeDecayTime, "ControlPitchEnvelopeDecayTime"},
+		{Patch::ControlOsc1Control1, "ControlOsc1Control1"},
+		{Patch::ControlOsc1Control2, "ControlOsc1Control2"},
+		{Patch::ControlOsc2Range, "ControlOsc2Range"},
+		{Patch::ControlOsc2FineWide, "ControlOsc2FineWide"},
+		{Patch::ControlOsc2Control1, "ControlOsc2Control1"},
+		{Patch::ControlOsc2Control2, "ControlOsc2Control2"},
+		{Patch::ControlCutoffFrequency, "ControlCutoffFrequency"},
+		{Patch::ControlResonance, "ControlResonance"},
+		{Patch::ControlCutoffFreqKeyFollow, "ControlCutoffFreqKeyFollow"},
+		{Patch::ControlFilterLfo1Depth, "ControlFilterLfo1Depth"},
+		{Patch::ControlFilterLfo2Depth, "ControlFilterLfo2Depth"},
+		{Patch::ControlFilterEnvDepth, "ControlFilterEnvDepth"},
+		{Patch::ControlFilterEnvAttackTime, "ControlFilterEnvAttackTime"},
+		{Patch::ControlFilterEnvDecayTime, "ControlFilterEnvDecayTime"},
+		{Patch::ControlFilterEnvSustainLevel, "ControlFilterEnvSustainLevel"},
+		{Patch::ControlFilterEnvReleaseTime, "ControlFilterEnvReleaseTime"},
+		{Patch::ControlAmpLevel, "ControlAmpLevel"},
+		{Patch::ControlAmpLfo1Depth, "ControlAmpLfo1Depth"},
+		{Patch::ControlAmpLfo2Depth, "ControlAmpLfo2Depth"},
+		{Patch::ControlAmpEnvAttackTime, "ControlAmpEnvAttackTime"},
+		{Patch::ControlAmpEnvDecayTime, "ControlAmpEnvDecayTime"},
+		{Patch::ControlAmpEnvSustainLevel, "ControlAmpEnvSustainLevel"},
+		{Patch::ControlAmpEnvReleaseTime, "ControlAmpEnvReleaseTime"},
+		{Patch::ControlToneControlBass, "ControlToneControlBass"},
+		{Patch::ControlToneControlTreble, "ControlToneControlTreble"},
+		{Patch::ControlMultiEffectsLevel, "ControlMultiEffectsLevel"},
+		{Patch::ControlDelayTime, "ControlDelayTime"},
+		{Patch::ControlDelayFeedback, "ControlDelayFeedback"},
+		{Patch::ControlDelayLevel, "ControlDelayLevel"},
+		{Patch::MorphBendAssign, "MorphBendAssign"},
+		{Patch::ControlPortamentoTime, "ControlPortamentoTime"},
+		{Patch::VelocitySwitch, "VelocitySwitch"},
+		{Patch::VelocityLfo1Rate, "VelocityLfo1Rate"},
+		{Patch::VelocityLfo1Fade, "VelocityLfo1Fade"},
+		{Patch::VelocityLfo2Rate, "VelocityLfo2Rate"},
+		{Patch::VelocityCrossModulationDepth, "VelocityCrossModulationDepth"},
+		{Patch::VelocityOscillatorBalance, "VelocityOscillatorBalance"},
+		{Patch::VelocityPitchLfo1Depth, "VelocityPitchLfo1Depth"},
+		{Patch::VelocityPitchLfo2Depth, "VelocityPitchLfo2Depth"},
+		{Patch::VelocityPitchEnvelopeDepth, "VelocityPitchEnvelopeDepth"},
+		{Patch::VelocityPitchEnvelopeAttackTime, "VelocityPitchEnvelopeAttackTime"},
+		{Patch::VelocityPitchEnvelopeDecayTime, "VelocityPitchEnvelopeDecayTime"},
+		{Patch::VelocityOsc1Control1, "VelocityOsc1Control1"},
+		{Patch::VelocityOsc1Control2, "VelocityOsc1Control2"},
+		{Patch::VelocityOsc2Range, "VelocityOsc2Range"},
+		{Patch::VelocityOsc2FineWide, "VelocityOsc2FineWide"},
+		{Patch::VelocityOsc2Control1, "VelocityOsc2Control1"},
+		{Patch::VelocityOsc2Control2, "VelocityOsc2Control2"},
+		{Patch::VelocityCutoffFrequency, "VelocityCutoffFrequency"},
+		{Patch::VelocityResonance, "VelocityResonance"},
+		{Patch::VelocityCutoffFreqKeyFollow, "VelocityCutoffFreqKeyFollow"},
+		{Patch::VelocityFilterLfo1Depth, "VelocityFilterLfo1Depth"},
+		{Patch::VelocityFilterLfo2Depth, "VelocityFilterLfo2Depth"},
+		{Patch::VelocityFilterEnvDepth, "VelocityFilterEnvDepth"},
+		{Patch::VelocityFilterEnvAttackTime, "VelocityFilterEnvAttackTime"},
+		{Patch::VelocityFilterEnvDecayTime, "VelocityFilterEnvDecayTime"},
+		{Patch::VelocityFilterEnvSusLevel, "VelocityFilterEnvSusLevel"},
+		{Patch::VelocityFilterEnvReleaseTime, "VelocityFilterEnvReleaseTime"},
+		{Patch::VelocityAmpLevel, "VelocityAmpLevel"},
+		{Patch::VelocityAmpLfo1Depth, "VelocityAmpLfo1Depth"},
+		{Patch::VelocityAmpLfo2Depth, "VelocityAmpLfo2Depth"},
+		{Patch::VelocityAmpEnvAttackTime, "VelocityAmpEnvAttackTime"},
+		{Patch::VelocityAmpEnvDecayTime, "VelocityAmpEnvDecayTime"},
+		{Patch::VelocityAmpEnvSustainLevel, "VelocityAmpEnvSustainLevel"},
+		{Patch::VelocityAmpEnvReleaseTime, "VelocityAmpEnvReleaseTime"},
+		{Patch::VelocityToneControlBass, "VelocityToneControlBass"},
+		{Patch::VelocityToneControlTreble, "VelocityToneControlTreble"},
+		{Patch::VelocityMultiEffectsLevel, "VelocityMultiEffectsLevel"},
+		{Patch::VelocityDelayTime, "VelocityDelayTime"},
+		{Patch::VelocityDelayFeedback, "VelocityDelayFeedback"},
+		{Patch::VelocityDelayLevel, "VelocityDelayLevel"},
+		{Patch::VelocityPortamentoTime, "VelocityPortamentoTime"},
+		{Patch::ActiveIndicatorOfBender, "ActiveIndicatorOfBender"},
+		{Patch::ActiveIndicatorOfVelocityAssign, "ActiveIndicatorOfVelocityAssign"},
+		{Patch::ActiveIndicatorOfControlAssign, "ActiveIndicatorOfControlAssign"},
+		{Patch::EnvelopeTypeInSolo, "EnvelopeTypeInSolo"},
+		{Patch::Osc2ExternalInputSwitch, "Osc2ExternalInputSwitch"},
+		{Patch::VoiceModulatorSendSwitch, "VoiceModulatorSendSwitch"},
+		{Patch::UnisonSwitch, "UnisonSwitch"},
+		{Patch::UnisonDetune, "UnisonDetune"},
+		{Patch::PatchGain, "PatchGain"},
+		{Patch::ExternalTriggerSwitch, "ExternalTriggerSwitch"},
+		{Patch::ExternalTriggerDestination, "ExternalTriggerDestination"},
+	};
+
+	constexpr size_t g_numPatchParams = sizeof(g_patchParams) / sizeof(g_patchParams[0]);
+	size_t g_currentParamIndex = 18;
+	int g_currentParamValue = 0;  // 0 or 1
+
+	// Waveform cycling state
+	int g_osc1WaveformValue = 0;  // 0-6: SUPER SAW, TWM, ..., PULSE, SAW, TRI
+	int g_osc2WaveformValue = 0;  // 0-3: PULSE, TRI, SAW, NOISE
+	const char* g_osc1WaveformNames[] = {"SUPER SAW", "TWM", "??", "??", "PULSE", "SAW", "TRI"};
+	const char* g_osc2WaveformNames[] = {"PULSE", "TRI", "SAW", "NOISE"};
+
+	// Switch cycling state
+	int g_ringModulatorValue = 0;  // 0-1: OFF, ON
+	int g_osc2SyncValue = 0;  // 0-1: OFF, ON
+	const char* g_switchNames[] = {"OFF", "ON"};
+
 	std::vector<PendingButtonRelease> g_pendingReleases;
 	std::vector<synthLib::SMidiEvent> g_pendingMidiIn;  // Queue for MIDI events to send via device.process()
 
@@ -115,6 +291,25 @@ namespace
 		synthLib::SMidiEvent ev(synthLib::MidiEventSource::Host);
 		ev.sysex = std::move(sysex);
 		g_pendingMidiIn.push_back(ev);
+	}
+
+	void cyclePatchParameter()
+	{
+		const auto& param = g_patchParams[g_currentParamIndex];
+		std::cout << param.name << "(" << g_currentParamIndex << ") = " << g_currentParamValue << std::endl;
+
+			sendParameterChange(PerformanceData::PatchUpper, param.param, g_currentParamValue);
+
+		// Toggle between 0 and 1, and advance parameter when going back to 0
+		if (g_currentParamValue == 0)
+		{
+			g_currentParamValue = 1;
+		}
+		else
+		{
+			g_currentParamValue = 0;
+			g_currentParamIndex = (g_currentParamIndex + 1) % g_numPatchParams;
+		}
 	}
 
 	void handleKeyPress(int key, Device& device)
@@ -189,26 +384,25 @@ namespace
 				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
-			case 'z': 
-				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 127);
-				std::cout << "Setting OscBalance to 127\n";;
+			case 'z':  // Cycle through Osc1Waveform values (0-6)
+				g_osc1WaveformValue = (g_osc1WaveformValue + 1) % 7;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Waveform, g_osc1WaveformValue);
+				std::cout << "Osc1Waveform: " << g_osc1WaveformNames[g_osc1WaveformValue] << " (" << g_osc1WaveformValue << ")\n";
 				break;
-			case 'Z':  
-				sendParameterChange(PerformanceData::PatchUpper, Patch::OscillatorBalance, 0);
-				std::cout << "Setting OscBalance to 0\n";;
+			case 'x':  // Cycle through Osc2Waveform values (0-3)
+				g_osc2WaveformValue = (g_osc2WaveformValue + 1) % 4;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc2Waveform, g_osc2WaveformValue);
+				std::cout << "Osc2Waveform: " << g_osc2WaveformNames[g_osc2WaveformValue] << " (" << g_osc2WaveformValue << ")\n";
 				break;
-
-			case 'r':  // KeyMode SINGLE
-				sendParameterChange(PerformanceCommon::KeyMode, 0);
-				std::cout << "KeyMode: SINGLE (0)\n";
+			case 't':  // Cycle through RingModulatorSwitch values (0-1)
+				g_ringModulatorValue = (g_ringModulatorValue + 1) % 2;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::RingModulatorSwitch, g_ringModulatorValue);
+				std::cout << "RingModulatorSwitch: " << g_switchNames[g_ringModulatorValue] << " (" << g_ringModulatorValue << ")\n";
 				break;
-			case 't':  // KeyMode DUAL
-				sendParameterChange(PerformanceCommon::KeyMode, 1);
-				std::cout << "KeyMode: DUAL (1)\n";
-				break;
-			case 'y':  // KeyMode SPLIT
-				sendParameterChange(PerformanceCommon::KeyMode, 2);
-				std::cout << "KeyMode: SPLIT (2)\n";
+			case 'y':  // Cycle through Osc2SyncSwitch values (0-1)
+				g_osc2SyncValue = (g_osc2SyncValue + 1) % 2;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc2SyncSwitch, g_osc2SyncValue);
+				std::cout << "Osc2SyncSwitch: " << g_switchNames[g_osc2SyncValue] << " (" << g_osc2SyncValue << ")\n";
 				break;
 			case 'u': // Dump all ASICs
 				device.getJe8086().getAsics().dump();
@@ -238,7 +432,36 @@ namespace
 				}
 				std::cout << "All notes off\n";
 				break;
+			case 'c':  // Cycle through all Patch parameters (0 then 1 for each)
+				cyclePatchParameter();
+				break;
+/**
+400 Cross modulation depth
+44 Oscillator balance
+OscLfo1Depth -> starts writing to 19.
+041D, 041B -> Oscillator shift (two writes for each)
+Osc1Waveform -> 0: 0445, 0442, 043f, 043c
 
+Osc2Range endrer 19, Osc2FineWide endrer også 19
+
+osc2waveform -> 045c, 0457 forever (NB: Har da byttet waveform bort fra supersaw! vet ikke om kode er oppdatert)
+Osc1Control1 0x43F
+Osc1Control2 0x43C
+Etter osc2 waveform = 0, mens osc1 control1 and 2 er satt til 1, så endres
+0x87, og så endres 82 for
+
+Things that lead to program code changes:
+RingModulatorSwitch(5)
+
+Osc1Waveform
+
+Osc2Waveform
+
+Osc2SyncSwith
+*/
+				break;
+			default:
+				break;
 		}
 	}
 }
