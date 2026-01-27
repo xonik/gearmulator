@@ -68,7 +68,7 @@ Etter osc2 waveform = 0, mens osc1 control1 and 2 er satt til 1, så endres
 0x87, og så endres 82 for*/
 
 // Lookup and print opcode name from hex value (based on list at line 880)
-inline const char* getAddressComment(uint32_t addr) {
+inline const char* getAddressComment(uint32_t addr, bool clr) {
 	// All strings are 16 chars, left-padded with spaces
 	switch (addr) {
 		case 0x0000: return "\n# Dump after setting note to 61, detune to 4 and mix to 424 \n";
@@ -89,10 +89,14 @@ inline const char* getAddressComment(uint32_t addr) {
 		case 0x043f: return "\n# Sets detune value\n";
 		case 0x0442: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
 		case 0x0445: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws.\n";
+		case 0x0450: return "\n# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?\n";
 		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1\n";
 		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
 		case 0x049e: return "# Osc 1 end\n\n\n";
-		default: return "";
+		default: {
+			return clr ? "\n" : "";
+		}
 	}
 	/*
 	no changes from PitchLfo2Depth, 
@@ -135,6 +139,36 @@ inline const char* getMACString(const char* factorA, uint8_t coeff, uint8_t shif
 	}
 }
 
+inline bool getClr(uint8_t opc, uint8_t mem, uint8_t coef){
+	switch (opc)
+	{
+		case 0x30:
+			return !(coef & 1);
+		case 0x34:
+			if (mem >= 0xc0) {
+				return (mem & 0x10);
+			} else {
+				return false;
+			}
+		case 0x04:
+		case 0x08:
+		case 0x0c:
+		case 0x14:
+		case 0x18:
+		case 0x1c:
+		case 0x24:
+		case 0x44:
+		case 0x4c:
+		case 0x50:
+		case 0x64:
+		case 0x6c:
+		case 0x74:		
+		case 0x7c:
+			return true;
+		default: return false;
+	}
+}
+
 // Get opcode description with detailed operation explanation
 inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_t shiftbits, bool lastWasOp30) {
 
@@ -170,7 +204,7 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_
 			const char* accChar = (coeff & 2) ? "B" : "A";
 			const char* clrChar = clr ? " " : "+";
 			int pos = 0;
-
+			
 			if (coeff & 4) {
 				if(weird){
 					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = facA = sat(%s)", mem, accChar);
@@ -1127,22 +1161,20 @@ protected:
 	}
 
 	void disassemble(uint32_t address, FILE *f) {
-		fprintf(f, getAddressComment(address));
+		
+		bool stripEmptyOps = true;
+
 		// Reads from intmem
 		uint32_t opcode = 0;
 		for (int i = 0; i < 4; i++) opcode |= intmem[address * 4 + i] << (i * 8);
 		opcode &= 0xfffffff;
-		int col = 0;
-		col += fprintf(f, "%04x; ", address);
-		if (address >= 1024)
-		{
-			const uint8_t dram = (opcode >> 23) & 0x1f;
-			col += fprintf(f, "%01x%01x ", dram >> 1, dram & 1); // this is awkward but this is how we think about it right now, because this is byte aligned.
-		}
-		else if (opcode & 0x800000) col += fprintf(f, "<unexpected top bit set on low page> ");
+
+		if(stripEmptyOps && !opcode) return;
+
+		uint32_t opcodeForPrint = opcode;
+
 		opcode &= 0x7fffff;
-		col += fprintf(f, "%02x %02x %02x", (opcode >> 16) & 0x7f, (opcode >> 8) & 255, opcode & 255);
-		if (!opcode) {fprintf(f, "\n"); return;}
+		uint32_t opcodeForPrint2 = opcode;
 		
 		const uint8_t coeff = opcode & 0xff;
 		opcode >>= 8;
@@ -1151,8 +1183,26 @@ protected:
 		const uint8_t mem = opcode & 0xff;
 		opcode >>= 8;
 		const uint8_t opc = (opcode << 2) & 0x7c;
+		
+		const bool clr = getClr(opc, mem, coeff);
 
-		//fprintf(f, "  [op: 0x%02x, mem: 0x%02x, shift: 0x%02x, coeff: 0x%02x (%03d)]", opc, mem, shift, coeff, coeff);
+		fprintf(f, getAddressComment(address, clr));
+
+		int col = 0;
+		col += fprintf(f, "%04x; ", address);
+		if (address >= 1024)
+		{
+			const uint8_t dram = (opcodeForPrint >> 23) & 0x1f;
+			col += fprintf(f, "%01x%01x ", dram >> 1, dram & 1); // this is awkward but this is how we think about it right now, because this is byte aligned.
+		}
+		else if (opcodeForPrint & 0x800000) col += fprintf(f, "<unexpected top bit set on low page> ");
+
+		col += fprintf(f, "%02x %02x %02x", (opcodeForPrint2 >> 16) & 0x7f, (opcodeForPrint2 >> 8) & 255, opcodeForPrint2 & 255);
+
+		if (!opcodeForPrint2) {fprintf(f, "\n"); return;}
+
+		// Uncomment to show raw fields
+		//fprintf(f, " [o:0x%02x,m:0x%02x,s:0x%02x,c:0x%02x]", opc, mem, shift, coeff);
 
 		char lastss[64]; strcpy(lastss, ss);
 
@@ -1197,7 +1247,7 @@ protected:
 				if (coeff & 4) strcpy(ss, "sat(A)");
 				nve = (coeff & 8);
 				if (coeff & 16) col += fprintf(f, "<Unknown bit 4 for op 0x30>");
-				snprintf(cstr, sizeof(cstr), "mulcoeff%d", (coeff >> 5));
+				snprintf(cstr, sizeof(cstr), "mulc%d", (coeff >> 5));
 				break;
 			}
 			case 0x34: /// TODO:
