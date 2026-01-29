@@ -86,14 +86,21 @@ inline const char* getAddressComment(uint32_t addr, bool clr) {
 		case 0x041b: return "\n# Pitch changes here. Includes LFO from mcu, affected by Oscillator shift\n";
 		case 0x041d: return "\n# Changes when changing pitch (inc LFO), affected by Oscillator shift\n";
 		case 0x043c: return "\n# Osc 1 start\n# Sets mix value\n";
+		case 0x043d: return "# Adds value written to iram[0x15] on previous run\n";
 		case 0x043f: return "\n# Sets detune value\n";
-		case 0x0442: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x0445: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws.\n";
+		case 0x0441: return "# Adds value written to iram[0x13] on previous run\n";
+		case 0x0442: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32 - something strange: MIX is written to iram[0], but so is detune below\n";
+		case 0x0444: return "# Adds value written to iram[0x15] on previous run, same as for mix\n";
+		case 0x0445: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32 - something strange: DETUNE is written to iram[0], but so is mix above\n";
+		case 0x0447: return "# Adds value written to iram[0x13] on previous run, same as for detune\n";
+		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??\n";
 		case 0x0450: return "\n# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?\n";
-		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1\n";
+		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others\n";
 		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
+		case 0x047a: return "\n# Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram\n";
+		case 0x0485: return "# Mulcoeffs[2] read here is set right after center oscillator pitch (0x453), could this be HPF cutoff-related?\n";
 		case 0x049e: return "# Osc 1 end\n\n\n";
+
 		default: {
 			return clr ? "\n" : "";
 		}
@@ -106,6 +113,10 @@ inline const char* getAddressComment(uint32_t addr, bool clr) {
 	*/
 }
 
+
+inline int getPrefix(char* buf, int pos) {
+	return snprintf(buf + pos, sizeof(buf) - pos, "                                                                                            |                      |                                             |  ");
+}
 
 // disassemble helper, gets default value for multiplier input A based on mem field
 inline const char* getMulInputAFromMem(uint8_t mem) {
@@ -123,7 +134,7 @@ inline const char* getMulInputAFromMem(uint8_t mem) {
 	}
 }
 
-inline const char* getMACString(const char* factorA, uint8_t coeff, uint8_t shift) {
+inline const char* getMACString(const char* factorA, int8_t coeff, uint8_t shift) {
 	if(coeff == 128 && shift == 7 || coeff == 64 && shift == 6 || coeff == 32 && shift == 5 || coeff == 8 && shift == 3) {
 		return factorA;
 	} else if(coeff == 1){
@@ -170,19 +181,14 @@ inline bool getClr(uint8_t opc, uint8_t mem, uint8_t coef){
 }
 
 // Get opcode description with detailed operation explanation
-inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_t shiftbits, bool lastWasOp30) {
+inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, int8_t coeff, uint8_t shiftbits, bool lastWasOp30) {
 
 	const int shifts[4] = {7, 6, 5, 3};
 	const int shift = shifts[shiftbits & 3];
 	const char* acc = (shiftbits & 2) ? "B" : "A";
 	const int gramShift = (shiftbits & 1) ? 6 : 7;
 
-	if(coeff == 128 && shift == 7 || coeff == 64 && shift == 6 || coeff == 32 && shift == 5 || coeff == 8 && shift == 3) {
-		// 
-	} else if(coeff == 0){
-	}
-
-    static char buf[1024];
+    static char buf[8192];
     switch (opc) {
         case 0x00: snprintf(buf, sizeof(buf), "A += %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
         case 0x04: snprintf(buf, sizeof(buf), "A  = %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
@@ -204,36 +210,48 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_
 			const char* accChar = (coeff & 2) ? "B" : "A";
 			const char* clrChar = clr ? " " : "+";
 			int pos = 0;
-			
+
 			if (coeff & 4) {
 				if(weird){
-					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = facA = sat(%s)", mem, accChar);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "sat(%s)\n", accChar);
+					pos += getPrefix(buf, pos);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = mulA\n", mem);					
 				} else {
-					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = facA = (sat(%s) >= 0 ? 0x7fffff : 0xFF800000)", mem, accChar);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "mulA = (sat(%s) >= 0 ? 0x7fffff : 0xFF800000)\n", accChar);
+					pos += getPrefix(buf, pos);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = mulA\n", mem);
 				}
 			} else {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, "facA = %s", getMulInputAFromMem(mem));				
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "mulA = %s\n", getMulInputAFromMem(mem));				
 			}
 
 			if ((coeff >> 5) == 6) {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", facB = (eram.eramVarOffset << 11) & 0x7fffff");
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "mulB = (eram.eramVarOffset << 11) & 0x7fffff\n");
 			} else if ((coeff >> 5) == 7) {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", facB = mulcoeffs[5]");
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "mulB = mulcoeffs[5]\n");
 			} else {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", facB = mulcoeffs[%d]", (coeff >> 5));
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "mulB = mulcoeffs[%d]\n", (coeff >> 5));
 			}
 
 			if ((coeff & 8) && !weird) {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", facB *= -1");
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "mulB *= -1\n");
 			}
 			if ((coeff & 16) && !weird) {
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", if(facB >= 0) facB = (~facB & 0x7fffff)");
-				pos += snprintf(buf + pos, sizeof(buf) - pos, ", if(facB < 0) facB = ~(facB & 0x7fffff)");
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "if(mulB >= 0) mulB = (~mulB & 0x7fffff)\n");
+				pos += getPrefix(buf, pos);
+				pos += snprintf(buf + pos, sizeof(buf) - pos, "if(mulB < 0) mulB = ~(mulB & 0x7fffff)\n");
 			}
 
-			pos += snprintf(buf + pos, sizeof(buf) - pos, ", save facB to lastMulB, ");
+			pos += getPrefix(buf, pos);			
+			pos += snprintf(buf + pos, sizeof(buf) - pos, "save mulB to lastMulB\n");
 
-			pos += snprintf(buf + pos, sizeof(buf) - pos, ", %s %s= facA * (facB >> 16)) >> %d (multiply with 8 MSB of B)", accChar, clrChar, shift);;
+			pos += getPrefix(buf, pos);
+			pos += snprintf(buf + pos, sizeof(buf) - pos, "%s %s= (mulA * (mulB >> 16)) >> %d\n", accChar, clrChar, shift);
 
 			return buf;
 		}
@@ -274,20 +292,20 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, uint8_t coeff, uint8_
 			}
 
 		}
-        //case 0x38: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
-        case 0x38: return "";
-        //case 0x3C: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(B)", coeff, shift)); return buf;
-        case 0x3C: return "";
+        case 0x38: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
+        //case 0x38: return "";
+        case 0x3C: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(B)", coeff, shift)); return buf;
+        //case 0x3C: return "";
         case 0x40: snprintf(buf, sizeof(buf), "A += %s", getMACString("raw(A)", coeff, shift)); return buf;
         case 0x44: snprintf(buf, sizeof(buf), "A  = %s", getMACString("raw(A)", coeff, shift)); return buf;
         case 0x48: snprintf(buf, sizeof(buf), "A += %s", getMACString("rect(sat(A))", coeff, shift)); return buf;
         case 0x4C: snprintf(buf, sizeof(buf), "A  = %s", getMACString("rect(sat(A))", coeff, shift)); return buf;
         case 0x50: return "setcondition true, clear A. Some skipfield magic";
         case 0x54: return "N/A";
-        //case 0x58: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
-        case 0x58: return "";
-        //case 0x5C: snprintf(buf, sizeof(buf), "B += %s", getMACString("sat(B)", coeff, shift)); return buf;
-        case 0x5C: return "";
+        case 0x58: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
+        //case 0x58: return "";
+        case 0x5C: snprintf(buf, sizeof(buf), "B += %s", getMACString("sat(B)", coeff, shift)); return buf;
+        //case 0x5C: return "";
         case 0x60: snprintf(buf, sizeof(buf), "A += (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
         case 0x64: snprintf(buf, sizeof(buf), "A  = (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
         case 0x68: snprintf(buf, sizeof(buf), "A += (1-A)*%d if A is positive, %d * (A with sign removed) if negative", coeff, coeff); return buf;
@@ -431,6 +449,7 @@ public:
 	int32_t readGRAM(uint32_t offset) const {return shared->gram[(offset + iramPos) & IRAM_MASK];} 
 
 	void writeIRAM(int32_t val, uint32_t offset) { iram[(offset + iramPos) & IRAM_MASK] = val; }
+
 	int32_t readIRAM(uint32_t offset) const {return iram[(offset + iramPos) & IRAM_MASK];}
 
 	void sync() {
@@ -1186,7 +1205,7 @@ protected:
 		
 		const bool clr = getClr(opc, mem, coeff);
 
-		fprintf(f, getAddressComment(address, clr));
+		fprintf(f, "%s", getAddressComment(address, clr));
 
 		int col = 0;
 		col += fprintf(f, "%04x; ", address);
@@ -1202,7 +1221,7 @@ protected:
 		if (!opcodeForPrint2) {fprintf(f, "\n"); return;}
 
 		// Uncomment to show raw fields
-		//fprintf(f, " [o:0x%02x,m:0x%02x,s:0x%02x,c:0x%02x]", opc, mem, shift, coeff);
+		fprintf(f, " [o:0x%02x,m:0x%02x,s:0x%02x,c:0x%02x]", opc, mem, shift, coeff);
 
 		char lastss[64]; strcpy(lastss, ss);
 
@@ -1306,7 +1325,7 @@ protected:
 		fprintf(f, " |   ");		
 		fprintf(f, "%-4s %c, %c%s >> %d, %-19s", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
 		fprintf(f, "  |  ");
-		fprintf(f, getOpcodeDesc(opc, mem, coeff, shift, lastWasOp30));
+		fprintf(f, "%s", getOpcodeDesc(opc, mem, coeff, shift, lastWasOp30));
 		fprintf(f, "\n");
 		lastWasOp30 = opc == 0x30;
 	}

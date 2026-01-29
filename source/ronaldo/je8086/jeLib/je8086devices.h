@@ -246,6 +246,7 @@ namespace jeLib
 					// Super saw shows up 7 different places. Not sure if it is summed in any way.
 					
 					postSample(asic0.readGRAM(0x80) >> 2, asic0.readGRAM(0x80) >> 2);
+					//postSample(asic3.readGRAM(0xe8), asic3.readGRAM(0xec));
 
 					// Frequencies
 					// 0 - 80 og 1 80 har samme pitch

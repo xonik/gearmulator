@@ -62,7 +62,8 @@ namespace
 	};
 
 	//static int notes[8] = {60, 62, 64, 65, 67, 69, 71, 72};	
-	static int notes[8] = {60,60,60,60,60,60,60,60};	
+	//static int notes[8] = {60,60,60,60,60,60,60,60};	
+	static int notes[8] = {96,96,96,96,96,96,96,96};	
 
 	// Parameter cycling state
 	struct PatchParam {
@@ -364,7 +365,7 @@ namespace
 				break;
 			case 'd':  // Osc1Control1 increment by 1
 				if (g_faderOsc1Ctrl1 < 127) ++g_faderOsc1Ctrl1;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, g_faderOsc1Ctrl1);
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 127);
 				//std::cout << "Osc1 Control1: " << g_faderOsc1Ctrl1 << "\n";
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
@@ -375,13 +376,13 @@ namespace
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
 			case 'm':  // Osc1Control2 minimum (0)
-				if (g_faderOsc1Ctrl2 < 127) ++g_faderOsc1Ctrl2;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
+				if (g_faderOsc1Ctrl2 < 127) g_faderOsc1Ctrl2+=8;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 0);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'M':  // Osc1Control2 maximum (127)
 				if (g_faderOsc1Ctrl2 > 0) --g_faderOsc1Ctrl2;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'z':  // Cycle through Osc1Waveform values (0-6)
@@ -605,6 +606,10 @@ Antakelig derfor det er flere adresser som kopieres mellom asicene?
 						addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
 					}					
 
+					// Initialize faders
+					
+					sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 127);
+					//sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
 					// Knapper virker. Osc balace virker
 					// detune/mix/range/fine/pulse width virker IKKE.
 
