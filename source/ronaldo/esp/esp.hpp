@@ -155,9 +155,13 @@ inline bool getClr(uint8_t opc, uint8_t mem, uint8_t coef){
 	{
 		case 0x30:
 			return !(coef & 1);
-		case 0x34:
+		case 0x34:		
 			if (mem >= 0xc0) {
-				return (mem & 0x10);
+				if((mem & 0x10)){
+					return true;
+				} else {
+					return false;
+				}
 			} else {
 				return false;
 			}
@@ -251,7 +255,7 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, int8_t coeff, uint8_t
 			pos += snprintf(buf + pos, sizeof(buf) - pos, "save mulB to lastMulB\n");
 
 			pos += getPrefix(buf, pos);
-			pos += snprintf(buf + pos, sizeof(buf) - pos, "%s %s= (mulA * (mulB >> 16)) >> %d\n", accChar, clrChar, shift);
+			pos += snprintf(buf + pos, sizeof(buf) - pos, "%s %s= (mulA * (mulB >> 16)) >> %d", accChar, clrChar, shift);
 
 			return buf;
 		}
@@ -270,8 +274,8 @@ inline const char* getOpcodeDesc(uint8_t opc, uint8_t mem, int8_t coeff, uint8_t
 					case 0x4: return "Set INT pins";
 					case 0x6: {
 						if(lastWasOp30){
-							//snprintf(buf, sizeof(buf), "%s %s= ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> %d", accChar, clrChar, shift); return buf;													
-							snprintf(buf, sizeof(buf), "%s: Increase multiplication precision", accChar); return buf;
+							snprintf(buf, sizeof(buf), "%s %s= ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> %d // Increase multiplication precision", accChar, clrChar, shift); return buf;													
+							//snprintf(buf, sizeof(buf), "%s: Increase multiplication precision", accChar); return buf;
 						} else {
 							snprintf(buf, sizeof(buf), "%s %s= (lastMulA >> 7) * %d >> %d", accChar, clrChar, coeff, shift); return buf;
 						}

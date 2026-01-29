@@ -26,14 +26,12 @@
                                                                                             |                      |                                             |  if(mulB < 0) mulB = ~(mulB & 0x7fffff)
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0015; 37 18 70 [o:0x34,m:0xc6,s:0x00,c:0x70]                                                | 0x34         Special |   DMAC A,  #0x70 >> 7,                      |  A: Increase multiplication precision
+0015; 37 18 70 [o:0x34,m:0xc6,s:0x00,c:0x70]                                                | 0x34         Special |   DMAC A,  #0x70 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0016; 31 b8 61 [o:0x30,m:0x6e,s:0x00,c:0x61]                                                | 0x30        kMulCoef |   MAC  A,  mulc3 >> 7, iram0[0x6e]          |  mulA = iram[0x6e]
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 7
-
-0017; 37 18 61 [o:0x34,m:0xc6,s:0x00,c:0x61]                                                | 0x34         Special |   DMAC A,  #0x61 >> 7,                      |  A: Increase multiplication precision
+0017; 37 18 61 [o:0x34,m:0xc6,s:0x00,c:0x61]                                                | 0x34         Special |   DMAC A,  #0x61 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 
 0018; 31 98 92 [o:0x30,m:0x66,s:0x00,c:0x92]            <Unknown bit 4 for op 0x30>         | 0x30        kMulCoef |   MUL  B,  mulc4 >> 7, iram0[0x66]          |  mulA = iram[0x66]
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
@@ -42,15 +40,13 @@
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
 
-
 # Sets Osc2 range and fine, and affected by OscLFO1Depth 
-0019; 37 98 92 [o:0x34,m:0xe6,s:0x00,c:0x92]                                                | 0x34         Special |   DMAC B,  #0x92 >> 7,                      |  B: Increase multiplication precision
+0019; 37 98 92 [o:0x34,m:0xe6,s:0x00,c:0x92]                                                | 0x34         Special |   DMAC B,  #0x92 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 001a; 31 bc 83 [o:0x30,m:0x6f,s:0x00,c:0x83]                                                | 0x30        kMulCoef |   MAC  B,  mulc4 >> 7, iram0[0x6f]          |  mulA = iram[0x6f]
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-001b; 37 98 83 [o:0x34,m:0xe6,s:0x00,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 7,                      |  B: Increase multiplication precision
+001b; 37 98 83 [o:0x34,m:0xe6,s:0x00,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 
 001c; 08 01 40 [o:0x08,m:0x00,s:0x01,c:0x40]            iram0[0x00] = sat(A)                | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A)
 001d; 02 21 40 [o:0x00,m:0x88,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0x88]          |  A += iram[0x88]
@@ -119,8 +115,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 3
-
-004a; 37 9b 66 [o:0x34,m:0xe6,s:0x03,c:0x66]                                                | 0x34         Special |   DMAC B,  #0x66 >> 3,                      |  B: Increase multiplication precision
+004a; 37 9b 66 [o:0x34,m:0xe6,s:0x03,c:0x66]                                                | 0x34         Special |   DMAC B,  #0x66 >> 3,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 3 // Increase multiplication precision
 
 004b; 32 0c 1c [o:0x30,m:0x83,s:0x00,c:0x1c]            <Unknown bit 4 for op 0x30>         | 0x30        kMulCoef |   MUL  A, -mulc0 >> 7, sat(A)               |  sat(A)
 
@@ -158,8 +153,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0064; 37 18 60 [o:0x34,m:0xc6,s:0x00,c:0x60]                                                | 0x34         Special |   DMAC A,  #0x60 >> 7,                      |  A: Increase multiplication precision
+0064; 37 18 60 [o:0x34,m:0xc6,s:0x00,c:0x60]                                                | 0x34         Special |   DMAC A,  #0x60 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0065; 03 0d 40 [o:0x00,m:0xc3,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0xc3]          |  A += iram[0xc3]
 0066; 5f 30 00 [o:0x5c,m:0xcc,s:0x00,c:0x00]            iram0[0xcc] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 0067; 36 a4 00 [o:0x34,m:0xa9,s:0x00,c:0x00]            mulcoeff4   = sat(B);               | 0x34         Special |   MAC  A,  #0x00 >> 7, iram0[0xa9]          |  
@@ -170,16 +164,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
-
-006a; 37 19 81 [o:0x34,m:0xc6,s:0x01,c:0x81]                                                | 0x34         Special |   DMAC A,  #0x81 >> 6,                      |  A: Increase multiplication precision
+006a; 37 19 81 [o:0x34,m:0xc6,s:0x01,c:0x81]                                                | 0x34         Special |   DMAC A,  #0x81 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 # Osc 2 start
 006b; 33 14 62 [o:0x30,m:0xc5,s:0x00,c:0x62]                                                | 0x30        kMulCoef |   MUL  B,  mulc3 >> 7, iram0[0xc5]          |  mulA = iram[0xc5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
-006c; 37 98 62 [o:0x34,m:0xe6,s:0x00,c:0x62]                                                | 0x34         Special |   DMAC B,  #0x62 >> 7,                      |  B: Increase multiplication precision
+006c; 37 98 62 [o:0x34,m:0xe6,s:0x00,c:0x62]                                                | 0x34         Special |   DMAC B,  #0x62 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 006d; 13 1d 40 [o:0x10,m:0xc7,s:0x01,c:0x40]                                                | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram0[0xc7]          |  B += iram[0xc7]
 
 006e; 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram0[0x00] = sat(A)                | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) * -128 >> 7
@@ -190,16 +182,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-0072; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B: Increase multiplication precision
+0072; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0073; 33 20 64 [o:0x30,m:0xc8,s:0x00,c:0x64]                                                | 0x30        kMulCoef |   MUL  A,  mulc3 >> 7, sat(A)               |  mulA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xc8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0074; 37 18 64 [o:0x34,m:0xc6,s:0x00,c:0x64]                                                | 0x34         Special |   DMAC A,  #0x64 >> 7,                      |  A: Increase multiplication precision
+0074; 37 18 64 [o:0x34,m:0xc6,s:0x00,c:0x64]                                                | 0x34         Special |   DMAC A,  #0x64 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0075; 03 05 40 [o:0x00,m:0xc1,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0xc1]          |  A += iram[0xc1]
 
 0076; 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram0[0x00] = sat(B)                | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -207,8 +197,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-0078; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B: Increase multiplication precision
+0078; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0079; 5b 00 00 [o:0x58,m:0xc0,s:0x00,c:0x00]            iram0[0xc0] = sat(A)                | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 007a; 17 15 40 [o:0x14,m:0xc5,s:0x01,c:0x40]                                                | 0x14            kMac |   MUL  B,  #0x40 >> 6, iram0[0xc5]          |  B  = iram[0xc5]
@@ -217,8 +206,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-007c; 37 98 67 [o:0x34,m:0xe6,s:0x00,c:0x67]                                                | 0x34         Special |   DMAC B,  #0x67 >> 7,                      |  B: Increase multiplication precision
+007c; 37 98 67 [o:0x34,m:0xe6,s:0x00,c:0x67]                                                | 0x34         Special |   DMAC B,  #0x67 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 
 007d; 07 0d 40 [o:0x04,m:0xc3,s:0x01,c:0x40]                                                | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram0[0xc3]          |  A  = iram[0xc3]
 007f; 5f 10 00 [o:0x5c,m:0xc4,s:0x00,c:0x00]            iram0[0xc4] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
@@ -246,8 +234,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0090; 37 18 60 [o:0x34,m:0xc6,s:0x00,c:0x60]                                                | 0x34         Special |   DMAC A,  #0x60 >> 7,                      |  A: Increase multiplication precision
+0090; 37 18 60 [o:0x34,m:0xc6,s:0x00,c:0x60]                                                | 0x34         Special |   DMAC A,  #0x60 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0091; 03 4d 40 [o:0x00,m:0xd3,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0xd3]          |  A += iram[0xd3]
 0092; 5f 70 00 [o:0x5c,m:0xdc,s:0x00,c:0x00]            iram0[0xdc] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 0093; 36 a4 00 [o:0x34,m:0xa9,s:0x00,c:0x00]            mulcoeff4   = sat(B);               | 0x34         Special |   MAC  A,  #0x00 >> 7, iram0[0xa9]          |  
@@ -257,15 +244,13 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
-
-0096; 37 19 81 [o:0x34,m:0xc6,s:0x01,c:0x81]                                                | 0x34         Special |   DMAC A,  #0x81 >> 6,                      |  A: Increase multiplication precision
+0096; 37 19 81 [o:0x34,m:0xc6,s:0x01,c:0x81]                                                | 0x34         Special |   DMAC A,  #0x81 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0097; 33 54 62 [o:0x30,m:0xd5,s:0x00,c:0x62]                                                | 0x30        kMulCoef |   MUL  B,  mulc3 >> 7, iram0[0xd5]          |  mulA = iram[0xd5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
-0098; 37 98 62 [o:0x34,m:0xe6,s:0x00,c:0x62]                                                | 0x34         Special |   DMAC B,  #0x62 >> 7,                      |  B: Increase multiplication precision
+0098; 37 98 62 [o:0x34,m:0xe6,s:0x00,c:0x62]                                                | 0x34         Special |   DMAC B,  #0x62 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0099; 13 5d 40 [o:0x10,m:0xd7,s:0x01,c:0x40]                                                | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram0[0xd7]          |  B += iram[0xd7]
 
 009a; 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram0[0x00] = sat(A)                | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) * -128 >> 7
@@ -276,16 +261,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-009e; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B: Increase multiplication precision
+009e; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 009f; 33 60 64 [o:0x30,m:0xd8,s:0x00,c:0x64]                                                | 0x30        kMulCoef |   MUL  A,  mulc3 >> 7, sat(A)               |  mulA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xd8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-00a0; 37 18 64 [o:0x34,m:0xc6,s:0x00,c:0x64]                                                | 0x34         Special |   DMAC A,  #0x64 >> 7,                      |  A: Increase multiplication precision
+00a0; 37 18 64 [o:0x34,m:0xc6,s:0x00,c:0x64]                                                | 0x34         Special |   DMAC A,  #0x64 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 00a1; 03 45 40 [o:0x00,m:0xd1,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0xd1]          |  A += iram[0xd1]
 
 00a2; 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram0[0x00] = sat(B)                | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -293,8 +276,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-00a4; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B: Increase multiplication precision
+00a4; 37 99 83 [o:0x34,m:0xe6,s:0x01,c:0x83]                                                | 0x34         Special |   DMAC B,  #0x83 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 00a5; 5b 40 00 [o:0x58,m:0xd0,s:0x00,c:0x00]            iram0[0xd0] = sat(A)                | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 00a6; 17 55 40 [o:0x14,m:0xd5,s:0x01,c:0x40]                                                | 0x14            kMac |   MUL  B,  #0x40 >> 6, iram0[0xd5]          |  B  = iram[0xd5]
@@ -303,8 +285,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[3]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-00a8; 37 98 67 [o:0x34,m:0xe6,s:0x00,c:0x67]                                                | 0x34         Special |   DMAC B,  #0x67 >> 7,                      |  B: Increase multiplication precision
+00a8; 37 98 67 [o:0x34,m:0xe6,s:0x00,c:0x67]                                                | 0x34         Special |   DMAC B,  #0x67 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 
 00a9; 07 4d 40 [o:0x04,m:0xd3,s:0x01,c:0x40]                                                | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram0[0xd3]          |  A  = iram[0xd3]
 00ab; 5f 50 00 [o:0x5c,m:0xd4,s:0x00,c:0x00]            iram0[0xd4] = sat(B)                | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
@@ -340,8 +321,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 3
-
-00c3; 37 1b 80 [o:0x34,m:0xc6,s:0x03,c:0x80]                                                | 0x34         Special |   DMAC A,  #0x80 >> 3,                      |  A: Increase multiplication precision
+00c3; 37 1b 80 [o:0x34,m:0xc6,s:0x03,c:0x80]                                                | 0x34         Special |   DMAC A,  #0x80 >> 3,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 3 // Increase multiplication precision
 00c4; 00 19 40 [o:0x00,m:0x06,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0x06]          |  A += iram[0x06]
 
 00c5; 04 19 40 [o:0x04,m:0x06,s:0x01,c:0x40]                                                | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram0[0x06]          |  A  = iram[0x06]
@@ -366,8 +346,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[-4]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 3
-
-0120; 37 1b 80 [o:0x34,m:0xc6,s:0x03,c:0x80]                                                | 0x34         Special |   DMAC A,  #0x80 >> 3,                      |  A: Increase multiplication precision
+0120; 37 1b 80 [o:0x34,m:0xc6,s:0x03,c:0x80]                                                | 0x34         Special |   DMAC A,  #0x80 >> 3,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 3 // Increase multiplication precision
 0121; 00 99 40 [o:0x00,m:0x26,s:0x01,c:0x40]                                                | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram0[0x26]          |  A += iram[0x26]
 
 0122; 04 99 40 [o:0x04,m:0x26,s:0x01,c:0x40]                                                | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram0[0x26]          |  A  = iram[0x26]
@@ -409,8 +388,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-040f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+040f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0410; 00 03 0d 40 [o:0x00,m:0xc3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xc3]          |  A += iram[0xc3]
 0411; 00 5f 30 00 [o:0x5c,m:0xcc,s:0x00,c:0x00]            iram1[0xcc] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 0412; 00 36 8c 00 [o:0x34,m:0xa3,s:0x00,c:0x00]            mulcoeff1   = sat(B);            | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa3]          |  
@@ -422,16 +400,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
-
-0416; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A: Increase multiplication precision
+0416; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0417; 00 5d c0 00 [o:0x5c,m:0x70,s:0x00,c:0x00]            iram1[0x70] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 
 0418; 00 33 14 02 [o:0x30,m:0xc5,s:0x00,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 7, iram1[0xc5]          |  mulA = iram[0xc5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
-0419; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B: Increase multiplication precision
+0419; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 041a; 00 13 1d 40 [o:0x10,m:0xc7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xc7]          |  B += iram[0xc7]
 
 # Pitch changes here. Includes LFO from mcu, affected by Oscillator shift
@@ -444,16 +420,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-041f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+041f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0420; 00 33 20 04 [o:0x30,m:0xc8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xc8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0421; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A: Increase multiplication precision
+0421; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0422; 00 03 05 40 [o:0x00,m:0xc1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xc1]          |  A += iram[0xc1]
 
 0423; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -461,8 +435,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-0425; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+0425; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0426; 00 5b 00 00 [o:0x58,m:0xc0,s:0x00,c:0x00]            iram1[0xc0] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 0427; 00 24 1d 40 [o:0x24,m:0x07,s:0x01,c:0x40]                                             | 0x24       kReadGRAM |   MUL  A,  #0x40 >> 6, gram[0x07]           |  A  = gram[0x07]
@@ -473,8 +446,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-042a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B: Increase multiplication precision
+042a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 042b; 00 3a 18 00 [o:0x38,m:0x86,s:0x00,c:0x00]            gram[0x86]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 042c; 00 07 0d 40 [o:0x04,m:0xc3,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0xc3]          |  A  = iram[0xc3]
@@ -508,9 +480,8 @@
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
 
-
 # Sets detune value
-043f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+043f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0440; 00 03 4d 40 [o:0x00,m:0xd3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xd3]          |  A += iram[0xd3]
 # Adds value written to iram[0x13] on previous run
 0441; 00 5f 70 00 [o:0x5c,m:0xdc,s:0x00,c:0x00]            iram1[0xdc] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
@@ -527,8 +498,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
-
-0446; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A: Increase multiplication precision
+0446; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 # Adds value written to iram[0x13] on previous run, same as for detune
 0447; 00 5d c4 00 [o:0x5c,m:0x71,s:0x00,c:0x00]            iram1[0x71] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 
@@ -536,8 +506,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
-0449; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B: Increase multiplication precision
+0449; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 044a; 00 13 5d 40 [o:0x10,m:0xd7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xd7]          |  B += iram[0xd7]
 
 044b; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) * -128 >> 7
@@ -549,9 +518,8 @@
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
 
-
 # Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??
-044f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+044f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 # A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?
 0450; 00 33 60 04 [o:0x30,m:0xd8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000)
@@ -559,8 +527,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0451; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A: Increase multiplication precision
+0451; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0452; 00 03 45 40 [o:0x00,m:0xd1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xd1]          |  A += iram[0xd1]
 
 0453; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -568,8 +535,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-0455; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+0455; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0456; 00 5b 40 00 [o:0x58,m:0xd0,s:0x00,c:0x00]            iram1[0xd0] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 # Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others
@@ -581,8 +547,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-045a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B: Increase multiplication precision
+045a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 045b; 00 3a 20 00 [o:0x38,m:0x88,s:0x00,c:0x00]            gram[0x88]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 # Updated when osc2 waveform is set to 1
@@ -612,8 +577,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-046f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+046f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0470; 00 03 8d 40 [o:0x00,m:0xe3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xe3]          |  A += iram[0xe3]
 0471; 00 5f b0 00 [o:0x5c,m:0xec,s:0x00,c:0x00]            iram1[0xec] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 0472; 00 36 8c 00 [o:0x34,m:0xa3,s:0x00,c:0x00]            mulcoeff1   = sat(B);            | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa3]          |  
@@ -625,16 +589,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
-
-0476; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A: Increase multiplication precision
+0476; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0477; 00 5d c8 00 [o:0x5c,m:0x72,s:0x00,c:0x00]            iram1[0x72] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
 
 0478; 00 33 94 02 [o:0x30,m:0xe5,s:0x00,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 7, iram1[0xe5]          |  mulA = iram[0xe5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
-0479; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B: Increase multiplication precision
+0479; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 
 # Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram
 047a; 00 13 9d 40 [o:0x10,m:0xe7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xe7]          |  B += iram[0xe7]
@@ -647,16 +609,14 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-047f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+047f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0480; 00 33 a0 04 [o:0x30,m:0xe8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xe8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0481; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A: Increase multiplication precision
+0481; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0482; 00 03 85 40 [o:0x00,m:0xe1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xe1]          |  A += iram[0xe1]
 
 0483; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -664,9 +624,8 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
 # Mulcoeffs[2] read here is set right after center oscillator pitch (0x453), could this be HPF cutoff-related?
-0485; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B: Increase multiplication precision
+0485; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0486; 00 5b 80 00 [o:0x58,m:0xe0,s:0x00,c:0x00]            iram1[0xe0] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 0487; 00 24 2d 40 [o:0x24,m:0x0b,s:0x01,c:0x40]                                             | 0x24       kReadGRAM |   MUL  A,  #0x40 >> 6, gram[0x0b]           |  A  = gram[0x0b]
@@ -677,8 +636,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
-048a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B: Increase multiplication precision
+048a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 048b; 00 3a 28 00 [o:0x38,m:0x8a,s:0x00,c:0x00]            gram[0x8a]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0
 
 048c; 00 07 9d 40 [o:0x04,m:0xe7,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0xe7]          |  A  = iram[0xe7]
@@ -755,8 +713,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04c4; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04c4; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04c5; 00 01 95 40 [o:0x00,m:0x65,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x65]          |  A += iram[0x65]
 04c6; 00 00 21 40 [o:0x00,m:0x08,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x08]          |  A += iram[0x08]
 
@@ -764,8 +721,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04c8; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04c8; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04c9; 00 40 1c 00 [o:0x40,m:0x07,s:0x00,c:0x00]            iram1[0x07] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x07]          |  A += 0
 
 04ca; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
@@ -776,8 +732,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04ce; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04ce; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04cf; 00 40 24 00 [o:0x40,m:0x09,s:0x00,c:0x00]            iram1[0x09] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x09]          |  A += 0
 
 04d0; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
@@ -788,8 +743,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04d4; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04d4; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04d5; 00 40 2c 00 [o:0x40,m:0x0b,s:0x00,c:0x00]            iram1[0x0b] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0b]          |  A += 0
 
 04d6; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
@@ -800,8 +754,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04da; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04da; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04db; 00 40 34 00 [o:0x40,m:0x0d,s:0x00,c:0x00]            iram1[0x0d] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0d]          |  A += 0
 
 04dc; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
@@ -812,8 +765,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04e0; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04e0; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04e1; 00 40 3c 00 [o:0x40,m:0x0f,s:0x00,c:0x00]            iram1[0x0f] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0f]          |  A += 0
 
 04e2; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
@@ -828,41 +780,34 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
 04e9; 00 30 34 23 [o:0x30,m:0x0d,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0d]          |  mulA = iram[0x0d]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 04ea; 00 30 24 23 [o:0x30,m:0x09,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x09]          |  mulA = iram[0x09]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 04eb; 00 10 14 19 [o:0x10,m:0x05,s:0x00,c:0x19]                                             | 0x10            kMac |   MAC  B,  #0x19 >> 7, iram1[0x05]          |  B += iram[0x05] * 25 >> 7
 04ec; 00 30 1c 23 [o:0x30,m:0x07,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x07]          |  mulA = iram[0x07]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 04ed; 00 30 2c 23 [o:0x30,m:0x0b,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0b]          |  mulA = iram[0x0b]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 04ee; 00 30 3c 23 [o:0x30,m:0x0f,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0f]          |  mulA = iram[0x0f]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 04ef; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]            mulcoeff0   = sat(A);            | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  
 
 04f0; 00 32 44 00 [o:0x30,m:0x91,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0x91]          |  mulA = iram[0x91]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-04f1; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+04f1; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 04f2; 00 02 4d 40 [o:0x00,m:0x93,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x93]          |  A += iram[0x93]
 
 04f3; 00 30 01 56 [o:0x30,m:0x00,s:0x01,c:0x56]            <Unknown bit 4 for op 0x30>      | 0x30        kMulCoef |   MUL  B,  mulc2 >> 6, sat(A)               |  mulA = (sat(B) >= 0 ? 0x7fffff : 0xFF800000)
@@ -872,8 +817,7 @@
                                                                                             |                      |                                             |  if(mulB < 0) mulB = ~(mulB & 0x7fffff)
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 6
-
-04f4; 00 37 99 56 [o:0x34,m:0xe6,s:0x01,c:0x56]                                             | 0x34         Special |   DMAC B,  #0x56 >> 6,                      |  B: Increase multiplication precision
+04f4; 00 37 99 56 [o:0x34,m:0xe6,s:0x01,c:0x56]                                             | 0x34         Special |   DMAC B,  #0x56 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 04f5; 00 0a 49 40 [o:0x08,m:0x92,s:0x01,c:0x40]            iram1[0x92] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A)
 04f6; 00 02 45 40 [o:0x00,m:0x91,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x91]          |  A += iram[0x91]
@@ -883,8 +827,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 6
-
-04f9; 00 37 99 02 [o:0x34,m:0xe6,s:0x01,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 6,                      |  B: Increase multiplication precision
+04f9; 00 37 99 02 [o:0x34,m:0xe6,s:0x01,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 04fa; 00 12 5d 40 [o:0x10,m:0x97,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0x97]          |  B += iram[0x97]
 
 04fb; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) * -128 >> 7
@@ -898,8 +841,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 6
-
-0500; 00 37 19 04 [o:0x34,m:0xc6,s:0x01,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 6,                      |  A: Increase multiplication precision
+0500; 00 37 19 04 [o:0x34,m:0xc6,s:0x01,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0501; 00 02 45 40 [o:0x00,m:0x91,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x91]          |  A += iram[0x91]
 
 0502; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -912,8 +854,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-0507; 00 37 99 07 [o:0x34,m:0xe6,s:0x01,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 6,                      |  B: Increase multiplication precision
+0507; 00 37 99 07 [o:0x34,m:0xe6,s:0x01,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0508; 00 06 65 74 [o:0x04,m:0x99,s:0x01,c:0x74]                                             | 0x04            kMac |   MUL  A,  #0x74 >> 6, iram1[0x99]          |  A  = iram[0x99] * 116 >> 6
 050a; 00 5e 50 00 [o:0x5c,m:0x94,s:0x00,c:0x00]            iram1[0x94] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
@@ -956,8 +897,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0528; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+0528; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0529; 00 01 99 40 [o:0x00,m:0x66,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x66]          |  A += iram[0x66]
 052a; 00 00 a1 40 [o:0x00,m:0x28,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x28]          |  A += iram[0x28]
 
@@ -965,8 +905,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-052c; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+052c; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 052d; 00 40 9c 00 [o:0x40,m:0x27,s:0x00,c:0x00]            iram1[0x27] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x27]          |  A += 0
 
 052e; 00 05 99 40 [o:0x04,m:0x66,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x66]          |  A  = iram[0x66]
@@ -977,8 +916,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0532; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+0532; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0533; 00 40 a4 00 [o:0x40,m:0x29,s:0x00,c:0x00]            iram1[0x29] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x29]          |  A += 0
 
 0534; 00 05 99 40 [o:0x04,m:0x66,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x66]          |  A  = iram[0x66]
@@ -989,8 +927,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0538; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+0538; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0539; 00 40 ac 00 [o:0x40,m:0x2b,s:0x00,c:0x00]            iram1[0x2b] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x2b]          |  A += 0
 
 053a; 00 05 99 40 [o:0x04,m:0x66,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x66]          |  A  = iram[0x66]
@@ -1001,8 +938,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-053e; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+053e; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 053f; 00 40 b4 00 [o:0x40,m:0x2d,s:0x00,c:0x00]            iram1[0x2d] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x2d]          |  A += 0
 
 0540; 00 05 99 40 [o:0x04,m:0x66,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x66]          |  A  = iram[0x66]
@@ -1013,8 +949,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0544; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+0544; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0545; 00 40 bc 00 [o:0x40,m:0x2f,s:0x00,c:0x00]            iram1[0x2f] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x2f]          |  A += 0
 
 0546; 00 05 99 40 [o:0x04,m:0x66,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x66]          |  A  = iram[0x66]
@@ -1029,41 +964,34 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
-
 054d; 00 30 b4 23 [o:0x30,m:0x2d,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x2d]          |  mulA = iram[0x2d]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 054e; 00 30 a4 23 [o:0x30,m:0x29,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x29]          |  mulA = iram[0x29]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 054f; 00 10 94 19 [o:0x10,m:0x25,s:0x00,c:0x19]                                             | 0x10            kMac |   MAC  B,  #0x19 >> 7, iram1[0x25]          |  B += iram[0x25] * 25 >> 7
 0550; 00 30 9c 23 [o:0x30,m:0x27,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x27]          |  mulA = iram[0x27]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 0551; 00 30 ac 23 [o:0x30,m:0x2b,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x2b]          |  mulA = iram[0x2b]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 0552; 00 30 bc 23 [o:0x30,m:0x2f,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x2f]          |  mulA = iram[0x2f]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
-
 0553; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]            mulcoeff0   = sat(A);            | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  
 
 0554; 00 32 84 00 [o:0x30,m:0xa1,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0xa1]          |  mulA = iram[0xa1]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
-
-0555; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A: Increase multiplication precision
+0555; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // Increase multiplication precision
 0556; 00 02 8d 40 [o:0x00,m:0xa3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xa3]          |  A += iram[0xa3]
 
 0557; 00 30 01 56 [o:0x30,m:0x00,s:0x01,c:0x56]            <Unknown bit 4 for op 0x30>      | 0x30        kMulCoef |   MUL  B,  mulc2 >> 6, sat(A)               |  mulA = (sat(B) >= 0 ? 0x7fffff : 0xFF800000)
@@ -1073,8 +1001,7 @@
                                                                                             |                      |                                             |  if(mulB < 0) mulB = ~(mulB & 0x7fffff)
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 6
-
-0558; 00 37 99 56 [o:0x34,m:0xe6,s:0x01,c:0x56]                                             | 0x34         Special |   DMAC B,  #0x56 >> 6,                      |  B: Increase multiplication precision
+0558; 00 37 99 56 [o:0x34,m:0xe6,s:0x01,c:0x56]                                             | 0x34         Special |   DMAC B,  #0x56 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 0559; 00 0a 89 40 [o:0x08,m:0xa2,s:0x01,c:0x40]            iram1[0xa2] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A)
 055a; 00 02 85 40 [o:0x00,m:0xa1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xa1]          |  A += iram[0xa1]
@@ -1084,8 +1011,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 6
-
-055d; 00 37 99 02 [o:0x34,m:0xe6,s:0x01,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 6,                      |  B: Increase multiplication precision
+055d; 00 37 99 02 [o:0x34,m:0xe6,s:0x01,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 055e; 00 12 9d 40 [o:0x10,m:0xa7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xa7]          |  B += iram[0xa7]
 
 055f; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) * -128 >> 7
@@ -1099,8 +1025,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 6
-
-0564; 00 37 19 04 [o:0x34,m:0xc6,s:0x01,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 6,                      |  A: Increase multiplication precision
+0564; 00 37 19 04 [o:0x34,m:0xc6,s:0x01,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 0565; 00 02 85 40 [o:0x00,m:0xa1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xa1]          |  A += iram[0xa1]
 
 0566; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) * -128 >> 7
@@ -1113,8 +1038,7 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
-
-056b; 00 37 99 07 [o:0x34,m:0xe6,s:0x01,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 6,                      |  B: Increase multiplication precision
+056b; 00 37 99 07 [o:0x34,m:0xe6,s:0x01,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6 // Increase multiplication precision
 
 056c; 00 06 a5 74 [o:0x04,m:0xa9,s:0x01,c:0x74]                                             | 0x04            kMac |   MUL  A,  #0x74 >> 6, iram1[0xa9]          |  A  = iram[0xa9] * 116 >> 6
 056e; 00 5e 90 00 [o:0x5c,m:0xa4,s:0x00,c:0x00]            iram1[0xa4] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0
