@@ -377,7 +377,7 @@ namespace
 				break;
 			case 'm':  // Osc1Control2 minimum (0)
 				if (g_faderOsc1Ctrl2 < 127) g_faderOsc1Ctrl2+=8;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 0);
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'M':  // Osc1Control2 maximum (127)
