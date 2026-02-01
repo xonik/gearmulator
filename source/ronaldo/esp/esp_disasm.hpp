@@ -259,21 +259,98 @@ inline const char* getAddressComment(uint32_t address, const uint8_t* intmem, bo
 		case 0x00b2: return "# Osc 2 sync end\n\n";
 		case 0x00b9: return "# Osc 2 end\n\n";
 		case 0x0400: return "\n# Set X-mod depth\n";
-		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x041b: return "\n# Pitch. Includes LFO from mcu, affected by Oscillator shift\n";
-		case 0x043c: return "\n# Osc 1 start\n# Pretty sure this does a glide between old and new value of mix\n# Sets mix value to mixInput * 512 - iram[0x15] (general formula: input15bit * (mulA / 8192) if shift is 6\n";
-		case 0x043f: return "\n# \n# Pretty sure this does a glide between old and new value of detune. Sets detune value to detuneInput * 512 - prevIram[0x13]\n";
-		case 0x0442: return "\n# B = mixInputResult / 512 + prevIram[0x15], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
-		case 0x0445: return "\n# A = detuneInputResult / 512 + prevIram[0x13], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
+		case 0x0404: return "\n# Input X1\n";		
+		case 0x040d: return "\n# Stores X-mod depth\n";
 
-		case 0x0448: return "\n# Stores final calculation of mix value to iram[0x15] and mulcoeff[1].\n";
-		case 0x044a: return "\n# Stores final calculation of mix * 70 / 32 to iram[0]??\n";
-		case 0x044b: return "\n# Stores final calculation of detune value to iram[0x13], mulcoeff[0] and gram[0xf6]\n";
-		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??\n";
-		case 0x0450: return "\n# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?\n";
-		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others\n";
-		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
-		case 0x047a: return "\n# Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram\n";
+        case 0x040e: return "\n# Input X2\n";
+
+        case 0x0411: return "\n# Stores X1\n";
+
+        case 0x0418: return "\n# Stores X2\n";
+        case 0x0420: return "\n# Input X3\n";
+        case 0x0424: return "\n# Stores pitch\n";
+        case 0x0425: return "\n# Input X4\n";
+        case 0x042a: return "\n# Stores X3\n";
+        case 0x042b: return "\n# Stores X4\n";
+        case 0x0430: return "\n# Input X5\n";
+
+
+		case 0x0408: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x041b: return "\n# Pitch. Includes LFO from mcu, affected by Oscillator shift\n";
+		case 0x043c: return "\n# Osc 1 start\n# Mix input (soft set)\n";
+		case 0x043f: return "\n# Detune input (soft set)\n";
+		case 0x0442: return "\n# Mix input (soft set pt. 2).\n";
+		case 0x0445: return "\n# Detune input (soft set pt. 2).\n";
+
+		case 0x0448: return "\n# Store mix to iram[0x15] and mulcoeff[1].\n";
+		case 0x044a: return "\n# mix * 70 / 32\n";
+		
+		case 0x044c: return "\n# Stores detune to iram[0x13] and mulcoeff[0] TODO: WRONG MEM, ERROR IN SAT-CALC WHEN MULCOEFFS \n";
+		case 0x044e: return "\n# Stores iram[0x06] (prev value of iram[0x05] to gram[0xf6] \n";
+
+		case 0x044f: return "\n# Load pitch into A\n";
+		case 0x0450: return "\n# Osc 1 - Load pitch and add previous value may be center oscillator\n";
+
+        case 0x0452: return "\n# Write pitch to gram[0xf0]?\n";
+
+        case 0x0453: return "\n# Store mix * 70 / 32 to mulcoeffs[2]\n";
+        
+        case 0x0454: return "\n# Osc 1 - Store updated value\n";
+
+        case 0x0455: return "\n# Osc 2 - Multiply pitch and detune, 14bit precision, and add pitch + previous value for osc.\n";
+
+        case 0x0459: return "\n# Osc 3 - Multiply pitch and detune, 14bit precision\n";
+
+        case 0x045b: return "\n# Osc 2 - Store updated value\n";
+
+		case 0x045c: return "\n# Osc 3 - Load pitch, add -1 * pitch * detune (from 0x0459++) + previous value\n";
+
+        case 0x045f: return "\n# Osc 4 - Multiply pitch and detune, 14bit precision\n";
+
+        case 0x0461: return "\n# Osc 3 - Store updated value\n";
+
+        case 0x0462: return "\n# Osc 4 - Load pitch, add (pitch * detune (from 0x045f++) * 120) >> 5 + previous value\n";
+        
+        case 0x0465: return "\n# Osc 5 - Multiply pitch and detune, 14bit precision\n";
+
+        case 0x0467: return "\n# Osc 4 - Store updated value\n";
+
+        case 0x0468: return "\n# Osc 5 - Load pitch, add (pitch * detune (from 0x0465++) * -102) >> 5 + previous value\n";
+
+        case 0x046b: return "\n# Osc 6 - Multiply pitch and detune, 14bit precision\n";
+
+        case 0x046d: return "\n# Osc 5 - Store updated value\n";
+
+        case 0x046e: return "\n# Osc 6 - Load pitch, add (pitch * detune (from 0x046b++) * 44) >> 3 + previous value\n";
+
+        case 0x0471: return "\n# Osc 7 - Multiply pitch and detune, 14bit precision\n";
+
+        case 0x0473: return "\n# Osc 6 - Store updated value\n";
+
+        case 0x0474: return "\n# Osc 7 - Load pitch, add (pitch * detune (from 0x0471++) * -45) >> 3 + previous value\n";
+        
+        case 0x0477: return "\n# Load pitch with 14bit precision A\n";
+
+        case 0x0479: return "\n# Osc 7 - Store updated value\n";
+
+		case 0x047a: return "\n# Set B = (Osc 7 * (mix >> 16)) >> 7\n";
+		
+        case 0x047b: return "\n# B += (Osc 5 * (mix >> 16)) >> 7\n";
+
+        case 0x047c: return "\n# B += (Osc 3 * (mix >> 16)) >> 7\n";
+
+        case 0x047d: return "\n# B += (Osc 1 * 25) >> 7\n";
+        
+        case 0x047e: return "\n# B += (Osc 2 * (mix >> 16)) >> 7\n";
+
+        case 0x047f: return "\n# B += (Osc 4 * (mix >> 16)) >> 7\n";
+
+        case 0x0480: return "\n# B += (Osc 6 * (mix >> 16)) >> 7\n";
+        
+        case 0x0481: return "\n# Store pitch with 14bit precision, from 0x0477 (read from 0x0479), to mulcoeffs[0] \n";
+        
+        case 0x0482: return "\n# AS FAR AS I GOT, FILTERING PROB STARTS HERE\n";
+
 		case 0x0485: return "# Mulcoeffs[2] read here is set right after center oscillator pitch (0x453), could this be HPF cutoff-related?\n";
 		case 0x049e: return "# Osc 1 end\n\n\n";
 

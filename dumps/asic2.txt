@@ -437,13 +437,15 @@
 
 # Coefficient = 1163264 (0x11c000)
 0403; 00 14 11 11 [o:0x14,m:0x04,s:0x01,c:0x11]                                             | 0x14            kMac |   MUL  B,  #0x11 >> 6, 0x400000             |  B  = 0x400000 * 17 >> 6
+
+# Input X1
 0404; 00 37 99 60 [o:0x34,m:0xe6,s:0x01,c:0x60]                                             | 0x34         Special |   DMAC B,  #0x60 >> 6,                      |  B += (lastMulA >> 7) * 96 >> 6
 0405; 00 13 34 80 [o:0x10,m:0xcd,s:0x00,c:0x80]                                             | 0x10            kMac |   MAC  B,  #0x80 >> 7, iram1[0xcd]          |  B += iram[0xcd] * -128 >> 7
 
 0406; 00 08 01 00 [o:0x08,m:0x00,s:0x01,c:0x00]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x00 >> 6, sat(A)               |  A  = 0, mulA=sat(A) @ [0x0402]
+0407; 00 37 19 10 [o:0x34,m:0xc6,s:0x01,c:0x10]                                             | 0x34         Special |   DMAC A,  #0x10 >> 6,                      |  A += (lastMulA >> 7) * 16 >> 6
 
 # Updated when pitch changes, first to 14336 then immediately back to 32
-0407; 00 37 19 10 [o:0x34,m:0xc6,s:0x01,c:0x10]                                             | 0x34         Special |   DMAC A,  #0x10 >> 6,                      |  A += (lastMulA >> 7) * 16 >> 6
 0408; 00 03 2d 40 [o:0x00,m:0xcb,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xcb]          |  A += iram[0xcb]
 
 0409; 00 1c 00 00 [o:0x1c,m:0x00,s:0x00,c:0x00]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x00 >> 7, sat(B)               |  B  = 0, mulA=sat(B) @ [0x0405]
@@ -451,9 +453,12 @@
 040b; 00 13 35 40 [o:0x10,m:0xcd,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xcd]          |  B += iram[0xcd]
 
 040c; 00 5b 28 00 [o:0x58,m:0xca,s:0x00,c:0x00]            iram1[0xca] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0408]
+
+# Stores X-mod depth
 040d; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]            mulcoeffs[0] = sat(A);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  mulcoeffs[0] = sat(A) @ [0x0408];
 
 
+# Input X2
 040e; 00 33 04 00 [o:0x30,m:0xc1,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0xc1]          |  mulA = iram[0xc1]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -461,6 +466,7 @@
 040f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 0410; 00 03 0d 40 [o:0x00,m:0xc3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xc3]          |  A += iram[0xc3]
 
+# Stores X1
 0411; 00 5f 30 00 [o:0x5c,m:0xcc,s:0x00,c:0x00]            iram1[0xcc] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x040b]
 
 0412; 00 36 8c 00 [o:0x34,m:0xa3,s:0x00,c:0x00]            mulcoeffs[1] = sat(B);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa3]          |  mulcoeffs[1] = sat(B) @ [0x040b];
@@ -477,6 +483,7 @@
 
 0417; 00 5d c0 00 [o:0x5c,m:0x70,s:0x00,c:0x00]            iram1[0x70] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x0413]
 
+# Stores X2
 0418; 00 33 14 02 [o:0x30,m:0xc5,s:0x00,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 7, iram1[0xc5]          |  mulA = iram[0xc5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -495,6 +502,7 @@
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
 041f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
+# Input X3
 0420; 00 33 20 04 [o:0x30,m:0xc8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) @ [0x041c] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xc8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
@@ -504,10 +512,14 @@
 0422; 00 03 05 40 [o:0x00,m:0xc1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xc1]          |  A += iram[0xc1]
 
 0423; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) @ [0x041f] * -128 >> 7
+
+# Stores pitch
 0424; 00 33 0d 23 [o:0x30,m:0xc3,s:0x01,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 6, iram1[0xc3]          |  mulA = iram[0xc3]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
+
+# Input X4
 0425; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
 0426; 00 5b 00 00 [o:0x58,m:0xc0,s:0x00,c:0x00]            iram1[0xc0] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0422]
@@ -521,8 +533,11 @@
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
+
+# Stores X3
 042a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 
+# Stores X4
 042b; 00 3a 18 00 [o:0x38,m:0x86,s:0x00,c:0x00]            gram[0x86]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0427]
 
 # Coefficient = 4194304 (0x400000)
@@ -532,6 +547,7 @@
 
 042f; 00 3a 00 00 [o:0x38,m:0x80,s:0x00,c:0x00]            gram[0x80]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x042c]
 
+# Input X5
 # Coefficient = 4096 (0x001000)
 0430; 00 04 11 00 [o:0x04,m:0x04,s:0x01,c:0x00]                                             | 0x04            kMac |   MUL  A,  #0x00 >> 6, 0x400000             |  A  = 0, mulA=0x400000
 0431; 00 37 19 08 [o:0x34,m:0xc6,s:0x01,c:0x08]                                             | 0x34         Special |   DMAC A,  #0x08 >> 6,                      |  A += (lastMulA >> 7) * 8 >> 6
@@ -551,8 +567,7 @@
 043b; 00 13 75 40 [o:0x10,m:0xdd,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xdd]          |  B += iram[0xdd]
 
 # Osc 1 start
-# Pretty sure this does a glide between old and new value of mix
-# Sets mix value to mixInput * 512 - iram[0x15] (general formula: input15bit * (mulA / 8192) if shift is 6
+# Mix input (soft set)
 043c; 00 5b 68 00 [o:0x58,m:0xda,s:0x00,c:0x00]            iram1[0xda] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0438]
 043d; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]            mulcoeffs[0] = sat(A);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  mulcoeffs[0] = sat(A) @ [0x0438];
 
@@ -562,14 +577,13 @@
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
 
-# 
-# Pretty sure this does a glide between old and new value of detune. Sets detune value to detuneInput * 512 - prevIram[0x13]
+# Detune input (soft set)
 043f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 0440; 00 03 4d 40 [o:0x00,m:0xd3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xd3]          |  A += iram[0xd3]
 
 0441; 00 5f 70 00 [o:0x5c,m:0xdc,s:0x00,c:0x00]            iram1[0xdc] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x043b]
 
-# B = mixInputResult / 512 + prevIram[0x15], Updated when pitch changes, first to 14336 then immediately back to 32.
+# Mix input (soft set pt. 2).
 0442; 00 36 8c 00 [o:0x34,m:0xa3,s:0x00,c:0x00]            mulcoeffs[1] = sat(B);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa3]          |  mulcoeffs[1] = sat(B) @ [0x043b];
 
 
@@ -577,7 +591,7 @@
 
 0444; 00 0b 49 40 [o:0x08,m:0xd2,s:0x01,c:0x40]            iram1[0xd2] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A) @ [0x0440]
 
-# A = detuneInputResult / 512 + prevIram[0x13], Updated when pitch changes, first to 14336 then immediately back to 32.
+# Detune input (soft set pt. 2).
 0445; 00 33 45 21 [o:0x30,m:0xd1,s:0x01,c:0x21]                                             | 0x30        kMulCoef |   MAC  A,  mulc1 >> 6, iram1[0xd1]          |  mulA = iram[0xd1]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -586,52 +600,63 @@
 
 0447; 00 5d c4 00 [o:0x5c,m:0x71,s:0x00,c:0x00]            iram1[0x71] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x0443]
 
-# Stores final calculation of mix value to iram[0x15] and mulcoeff[1].
+# Store mix to iram[0x15] and mulcoeff[1].
 0448; 00 33 54 02 [o:0x30,m:0xd5,s:0x00,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 7, iram1[0xd5]          |  mulA = iram[0xd5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
 0449; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 
-# Stores final calculation of mix * 70 / 32 to iram[0]??
+# mix * 70 / 32
 044a; 00 13 5d 40 [o:0x10,m:0xd7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xd7]          |  B += iram[0xd7]
 
-# Stores final calculation of detune value to iram[0x13], mulcoeff[0] and gram[0xf6]
 044b; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) @ [0x0446] * -128 >> 7
+
+# Stores detune to iram[0x13] and mulcoeff[0] TODO: WRONG MEM, ERROR IN SAT-CALC WHEN MULCOEFFS 
 044c; 00 01 c5 40 [o:0x00,m:0x71,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x71]          |  A += iram[0x71]
 
 044d; 00 1f 59 40 [o:0x1c,m:0xd6,s:0x01,c:0x40]            iram1[0xd6] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x40 >> 6, sat(B)               |  B  = sat(B) @ [0x044a]
+
+# Stores iram[0x06] (prev value of iram[0x05] to gram[0xf6] 
 044e; 00 33 55 23 [o:0x30,m:0xd5,s:0x01,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 6, iram1[0xd5]          |  mulA = iram[0xd5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
 
-# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??
+# Load pitch into A
 044f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
-# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?
+# Osc 1 - Load pitch and add previous value may be center oscillator
 0450; 00 33 60 04 [o:0x30,m:0xd8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) @ [0x044c] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xd8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
 0451; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
+
+# Write pitch to gram[0xf0]?
 0452; 00 03 45 40 [o:0x00,m:0xd1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xd1]          |  A += iram[0xd1]
 
+# Store mix * 70 / 32 to mulcoeffs[2]
 0453; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) @ [0x044f] * -128 >> 7
+
+# Osc 1 - Store updated value
 0454; 00 33 4d 23 [o:0x30,m:0xd3,s:0x01,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 6, iram1[0xd3]          |  mulA = iram[0xd3]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
+
+# Osc 2 - Multiply pitch and detune, 14bit precision, and add pitch + previous value for osc.
 0455; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
 0456; 00 5b 40 00 [o:0x58,m:0xd0,s:0x00,c:0x00]            iram1[0xd0] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0452]
 
-# Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others
 0457; 00 24 25 40 [o:0x24,m:0x09,s:0x01,c:0x40]                                             | 0x24       kReadGRAM |   MUL  A,  #0x40 >> 6, gram[0x09]           |  A  = gram[0x09]
 
 # Coefficient = 4194304 (0x400000)
 0458; 00 17 55 40 [o:0x14,m:0xd5,s:0x01,c:0x40]                                             | 0x14            kMac |   MUL  B,  #0x40 >> 6, iram1[0xd5]          |  B  = iram[0xd5]
+
+# Osc 3 - Multiply pitch and detune, 14bit precision
 0459; 00 33 64 07 [o:0x30,m:0xd9,s:0x00,c:0x07]                                             | 0x30        kMulCoef |   MAC  B,  mulc0 >> 7, sat(A)               |  mulA = (sat(B) @ [0x0455] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xd9] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
@@ -639,38 +664,55 @@
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
 045a; 00 37 98 07 [o:0x34,m:0xe6,s:0x00,c:0x07]                                             | 0x34         Special |   DMAC B,  #0x07 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 
+# Osc 2 - Store updated value
 045b; 00 3a 20 00 [o:0x38,m:0x88,s:0x00,c:0x00]            gram[0x88]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0457]
 
-# Updated when osc2 waveform is set to 1
+# Osc 3 - Load pitch, add -1 * pitch * detune (from 0x0459++) + previous value
 # Coefficient = 4194304 (0x400000)
 045c; 00 07 5d 40 [o:0x04,m:0xd7,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0xd7]          |  A  = iram[0xd7]
 
 045e; 00 5f 50 00 [o:0x5c,m:0xd4,s:0x00,c:0x00]            iram1[0xd4] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x045a]
 
+# Osc 4 - Multiply pitch and detune, 14bit precision
 045f; 00 3a 08 00 [o:0x38,m:0x82,s:0x00,c:0x00]            gram[0x82]  = sat(A)             | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x045c]
 
 # Coefficient = 4096 (0x001000)
 0460; 00 04 11 00 [o:0x04,m:0x04,s:0x01,c:0x00]                                             | 0x04            kMac |   MUL  A,  #0x00 >> 6, 0x400000             |  A  = 0, mulA=0x400000
+
+# Osc 3 - Store updated value
 0461; 00 37 19 08 [o:0x34,m:0xc6,s:0x01,c:0x08]                                             | 0x34         Special |   DMAC A,  #0x08 >> 6,                      |  A += (lastMulA >> 7) * 8 >> 6
+
+# Osc 4 - Load pitch, add (pitch * detune (from 0x045f++) * 120 >> 5) + previous value
 0462; 00 03 ac 80 [o:0x00,m:0xeb,s:0x00,c:0x80]                                             | 0x00            kMac |   MAC  A,  #0x80 >> 7, iram1[0xeb]          |  A += iram[0xeb] * -128 >> 7
 
 # Coefficient = 4194304 (0x400000)
 0463; 00 14 11 40 [o:0x14,m:0x04,s:0x01,c:0x40]                                             | 0x14            kMac |   MUL  B,  #0x40 >> 6, 0x400000             |  B  = 0x400000
 0464; 00 37 99 00 [o:0x34,m:0xe6,s:0x01,c:0x00]                                             | 0x34         Special |   DMAC B,  #0x00 >> 6,                      |  B += (lastMulA >> 7) * 0 >> 6
+
+# Osc 5 - Multiply pitch and detune, 14bit precision
 0465; 00 13 b4 80 [o:0x10,m:0xed,s:0x00,c:0x80]                                             | 0x10            kMac |   MAC  B,  #0x80 >> 7, iram1[0xed]          |  B += iram[0xed] * -128 >> 7
 
 0466; 00 08 00 00 [o:0x08,m:0x00,s:0x00,c:0x00]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x00 >> 7, sat(A)               |  A  = 0, mulA=sat(A) @ [0x0462]
+
+# Osc 4 - Store updated value
 0467; 00 37 18 20 [o:0x34,m:0xc6,s:0x00,c:0x20]                                             | 0x34         Special |   DMAC A,  #0x20 >> 7,                      |  A += (lastMulA >> 7) * 32 >> 7
+
+# Osc 5 - Load pitch, add (pitch * detune (from 0x0465++) * -102) >> 5 + previous value
 0468; 00 03 ad 40 [o:0x00,m:0xeb,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xeb]          |  A += iram[0xeb]
 
 0469; 00 1c 00 00 [o:0x1c,m:0x00,s:0x00,c:0x00]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x00 >> 7, sat(B)               |  B  = 0, mulA=sat(B) @ [0x0465]
 046a; 00 37 98 20 [o:0x34,m:0xe6,s:0x00,c:0x20]                                             | 0x34         Special |   DMAC B,  #0x20 >> 7,                      |  B += (lastMulA >> 7) * 32 >> 7
+
+# Osc 6 - Multiply pitch and detune, 14bit precision
 046b; 00 13 b5 40 [o:0x10,m:0xed,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xed]          |  B += iram[0xed]
 
 046c; 00 5b a8 00 [o:0x58,m:0xea,s:0x00,c:0x00]            iram1[0xea] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0468]
+
+# Osc 5 - Store updated value
 046d; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]            mulcoeffs[0] = sat(A);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  mulcoeffs[0] = sat(A) @ [0x0468];
 
 
+# Osc 6 - Load pitch, add (pitch * detune (from 0x046b++) * 44) >> 3 + previous value
 046e; 00 33 84 00 [o:0x30,m:0xe1,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0xe1]          |  mulA = iram[0xe1]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -678,13 +720,16 @@
 046f; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 0470; 00 03 8d 40 [o:0x00,m:0xe3,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xe3]          |  A += iram[0xe3]
 
+# Osc 7 - Multiply pitch and detune, 14bit precision
 0471; 00 5f b0 00 [o:0x5c,m:0xec,s:0x00,c:0x00]            iram1[0xec] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x046b]
 
 0472; 00 36 8c 00 [o:0x34,m:0xa3,s:0x00,c:0x00]            mulcoeffs[1] = sat(B);           | 0x34         Special |   MAC  A,  #0x00 >> 7, iram1[0xa3]          |  mulcoeffs[1] = sat(B) @ [0x046b];
 
 
+# Osc 6 - Store updated value
 0473; 00 24 17 40 [o:0x24,m:0x05,s:0x03,c:0x40]                                             | 0x24       kReadGRAM |   MUL  B,  #0x40 >> 6, gram[0x05]           |  B  = gram[0x05]
 
+# Osc 7 - Load pitch, add (pitch * detune (from 0x0471++) * -45) >> 3 + previous value
 0474; 00 0b 89 40 [o:0x08,m:0xe2,s:0x01,c:0x40]            iram1[0xe2] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A) @ [0x0470]
 0475; 00 33 85 21 [o:0x30,m:0xe1,s:0x01,c:0x21]                                             | 0x30        kMulCoef |   MAC  A,  mulc1 >> 6, iram1[0xe1]          |  mulA = iram[0xe1]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
@@ -692,33 +737,49 @@
                                                                                             |                      |                                             |  A += (mulA * (mulB >> 16)) >> 6
 0476; 00 37 19 21 [o:0x34,m:0xc6,s:0x01,c:0x21]                                             | 0x34         Special |   DMAC A,  #0x21 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
+# Load pitch with 14bit precision A
 0477; 00 5d c8 00 [o:0x5c,m:0x72,s:0x00,c:0x00]            iram1[0x72] = sat(B)             | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x0473]
 
 0478; 00 33 94 02 [o:0x30,m:0xe5,s:0x00,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 7, iram1[0xe5]          |  mulA = iram[0xe5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
+
+# Osc 7 - Store updated value
 0479; 00 37 98 02 [o:0x34,m:0xe6,s:0x00,c:0x02]                                             | 0x34         Special |   DMAC B,  #0x02 >> 7,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 
-# Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram
+# Set B = Osc 7 * mix (14bit precision)
 047a; 00 13 9d 40 [o:0x10,m:0xe7,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0xe7]          |  B += iram[0xe7]
 
+# B += Osc 5 * mix (14bit precision)
 047b; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) @ [0x0476] * -128 >> 7
+
+# B += Osc 3 * mix (14bit precision)
 047c; 00 01 c9 40 [o:0x00,m:0x72,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x72]          |  A += iram[0x72]
 
+# B += (Osc 1 * 25) >> 7
 047d; 00 1f 99 40 [o:0x1c,m:0xe6,s:0x01,c:0x40]            iram1[0xe6] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x40 >> 6, sat(B)               |  B  = sat(B) @ [0x047a]
+
+# B += Osc 2 * mix (14bit precision)
 047e; 00 33 95 23 [o:0x30,m:0xe5,s:0x01,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 6, iram1[0xe5]          |  mulA = iram[0xe5]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
+
+# B += Osc 4 * mix (14bit precision)
 047f; 00 37 99 23 [o:0x34,m:0xe6,s:0x01,c:0x23]                                             | 0x34         Special |   DMAC B,  #0x23 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
+# B += Osc 6 * mix (14bit precision)
 0480; 00 33 a0 04 [o:0x30,m:0xe8,s:0x00,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, sat(A)               |  mulA = (sat(A) @ [0x047c] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0xe8] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
+
+# Store pitch with 14bit precision, from 0x0477 (read from 0x0479), to mulcoeffs[0] 
 0481; 00 37 18 04 [o:0x34,m:0xc6,s:0x00,c:0x04]                                             | 0x34         Special |   DMAC A,  #0x04 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
+
+# AS FAR AS I GOT, FILTERING PROB STARTS HERE
 0482; 00 03 85 40 [o:0x00,m:0xe1,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0xe1]          |  A += iram[0xe1]
 
 0483; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(B)             | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) @ [0x047f] * -128 >> 7
