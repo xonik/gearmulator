@@ -934,6 +934,7 @@ protected:
 		const bool clr = getClr(opc, mem, coeff);
 
 		fprintf(f, "%s", getAddressComment(address, clr));
+		fprintf(f, "%s", getCoefComment(address, intmem));
 
 		int col = 0;
 		col += fprintf(f, "%04x; ", address);

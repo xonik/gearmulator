@@ -63,8 +63,7 @@ inline const char* getAddressComment(uint32_t addr, bool clr) {
 		case 0x00b9: return "# Osc 2 end\n\n";
 		case 0x0400: return "\n# Set X-mod depth\n";
 		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x041b: return "\n# Pitch changes here. Includes LFO from mcu, affected by Oscillator shift\n";
-		case 0x041d: return "\n# Changes when changing pitch (inc LFO), affected by Oscillator shift\n";
+		case 0x041b: return "\n# Pitch. Includes LFO from mcu, affected by Oscillator shift\n";
 		case 0x043c: return "\n# Osc 1 start\n# Pretty sure this does a glide between old and new value of mix\n# Sets mix value to mixInput * 512 - iram[0x15] (general formula: input15bit * (mulA / 8192) if shift is 6\n";
 		case 0x043f: return "\n# \n# Pretty sure this does a glide between old and new value of detune. Sets detune value to detuneInput * 512 - prevIram[0x13]\n";
 		case 0x0442: return "\n# B = mixInputResult / 512 + prevIram[0x15], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
@@ -113,6 +112,9 @@ inline const char* getMulInputAFromMem(uint8_t mem) {
 		}
 	}
 }
+
+// advanced coef calculation
+// kMac + 3 x DMAC = c1 << 16 + c2 << 9 + c3 << 2 + c4 >> 6
 
 inline const char* getMACString(const char* factorA, int8_t coeff, uint8_t shift) {
 	static char buf[64];
@@ -196,6 +198,79 @@ inline bool getAccumulator(uint8_t opc, uint8_t mem, uint8_t coef, uint8_t shift
 	return acc;
 }
 
+inline uint32_t getOpcode(uint32_t address, const uint8_t* intmem) {
+	// Look up opcode from intmem
+	uint32_t opcode = 0;
+	for (int i = 0; i < 4; i++) opcode |= (uint8_t)intmem[address * 4 + i] << (i * 8);
+	return opcode & 0xfffffff;
+}
+
+inline uint8_t getOp(uint32_t opcode) {
+	return ((opcode >> 18) << 2) & 0x7c;
+}
+
+inline uint8_t getMem(uint32_t opcode) {
+	return (opcode >> 10) & 0xff;
+}
+
+inline uint8_t getCoef(uint32_t opcode) {
+	return opcode & 0xff;
+}
+
+inline uint8_t getShiftbits(uint32_t opcode) {
+	return (opcode >> 8) & 3;
+}
+
+// Get high-precision 24-bit coefficient from 0x04/0x14 instruction followed by up to three 0x34 instructions
+inline uint32_t getHiPrecisionCoef(uint32_t address, const uint8_t* intmem) {
+	uint32_t opcode = getOpcode(address, intmem);
+	uint8_t op = getOp(opcode);
+	
+	// Must start with 0x04 or 0x14
+	if (op != 0x04 && op != 0x14) return 0;
+	
+	uint8_t coef0 = getCoef(opcode);  // 8 bits
+	uint8_t coef1 = 0, coef2 = 0, coef3 = 0;
+	
+	// Look forward at next addresses for 0x34 opcodes
+	for (int i = 1; i <= 3; i++) {
+		uint32_t nextOpcode = getOpcode(address + i, intmem);
+		uint8_t nextOp = getOp(nextOpcode);
+		if (nextOp != 0x34) break;
+		
+		uint8_t nextCoef = getCoef(nextOpcode);
+		if (i == 1) coef1 = nextCoef;
+		else if (i == 2) coef2 = nextCoef;
+		else if (i == 3) coef3 = nextCoef;
+	}
+	
+	// Combine into 24-bit number:
+	// - 8 bits from first coef (bits 23-16)
+	// - 7 LSB from second coef (bits 15-9)
+	// - 7 LSB from third coef (bits 8-2)
+	// - bits 6 and 5 from last coef (bits 1-0)
+	uint32_t result = ((uint32_t)coef0 << 16) |
+	                  ((uint32_t)(coef1 & 0x7f) << 9) |
+	                  ((uint32_t)(coef2 & 0x7f) << 2) |
+	                  ((coef3 >> 5) & 0x3);
+	
+	return result;
+}
+
+inline const char* getCoefComment(uint32_t address, const uint8_t* intmem) {
+    uint32_t opcode = getOpcode(address, intmem);
+	uint8_t op = getOp(opcode);
+    if(op == 0x04 || op == 0x14) {
+        uint32_t highPrecCoef = getHiPrecisionCoef(address, intmem);
+        static char coefComment[64];
+        snprintf(coefComment, sizeof(coefComment), "# Coefficient = %d (0x%06x)\n", highPrecCoef, highPrecCoef);        
+        return coefComment;
+    } else {
+        return "";
+    }
+}
+
+
 // Recursively search backwards from address to find previous instruction operating on same accumulator.
 // If no work is done on an accumulator, the current value will propagate to the next place, so after three
 // repetitions all values in the accumulator are the same, meaning we can just look for the last time the accumulator was written to.
@@ -207,25 +282,13 @@ inline uint16_t findPrevAccInstruction(uint16_t address, bool acc, const uint8_t
 	address--;
 	
 	// Look up opcode from intmem
-	uint32_t opcode = 0;
-	for (int i = 0; i < 4; i++) opcode |= (uint8_t)intmem[address * 4 + i] << (i * 8);
-	opcode &= 0xfffffff;
+	uint32_t opcode = getOpcode(address, intmem);
 	
 	// If opcode is 0, continue searching backwards
 	if (!opcode) return findPrevAccInstruction(address, acc, intmem);
 	
-	// Decode opcode fields (same as disassemble)
-	opcode &= 0x7fffff;
-	const uint8_t coef = opcode & 0xff;
-	opcode >>= 8;
-	const uint8_t shiftbits = opcode & 3;
-	opcode >>= 2;
-	const uint8_t mem = opcode & 0xff;
-	opcode >>= 8;
-	const uint8_t opc = (opcode << 2) & 0x7c;
-	
 	// Check if this instruction operates on the same accumulator
-	if (getAccumulator(opc, mem, coef, shiftbits) == acc) {
+	if (getAccumulator(getOp(opcode), getMem(opcode), getCoef(opcode), getShiftbits(opcode)) == acc) {
 		return address;
 	}
 	
@@ -259,6 +322,7 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 
     static char rawBStr[64];
     snprintf(rawBStr, sizeof(rawBStr), "raw(B) @ [0x%04x]", prevAccBAddress);
+
 
     static char buf[8192];
     switch (opc) {

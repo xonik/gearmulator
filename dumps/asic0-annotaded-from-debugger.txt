@@ -459,7 +459,12 @@
 0418; 00 59 b0 00 [o:0x58,m:0x6c,s:0x00,c:0x00]            iram1[0x6c] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A)
 
 # Pitch changes here. Includes LFO from mcu, affected by Oscillator shift
+8
+7
+7 -- 22
+
 // Input, pitch? Input is 0x06, 0x37, 0x6a, 0x00, eller 0000 0110 0110 1111 1010 1000 = 421800 (66FA8)
+// Input, pitch? Input is 0x06, 0x37, 0x6a, 0x00, eller 0000 0110 0110 11 111010 1000 = 421800 (66FA8)
 041b; 00 04 11 06 [o:0x04,m:0x04,s:0x01,c:0x06]                                             | 0x04            kMac |   MUL  A,  #0x06 >> 6, 0x400000             |  A  = 0x400000 * 6 >> 6
 041c; 00 37 19 37 [o:0x34,m:0xc6,s:0x01,c:0x37]                                             | 0x34         Special |   DMAC A,  #0x37 >> 6,                      |  A += (lastMulA >> 7) * 55 >> 6
 041d; 00 37 19 6a [o:0x34,m:0xc6,s:0x01,c:0x6a]                                             | 0x34         Special |   DMAC A,  #0x6a >> 6,                      |  A += (lastMulA >> 7) * 106 >> 6
