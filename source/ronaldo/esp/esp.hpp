@@ -933,7 +933,7 @@ protected:
 		
 		const bool clr = getClr(opc, mem, coeff);
 
-		fprintf(f, "%s", getAddressComment(address, clr));
+		fprintf(f, "%s", getAddressComment(address, intmem, clr));
 		fprintf(f, "%s", getCoefComment(address, intmem));
 
 		int col = 0;
@@ -1001,7 +1001,7 @@ protected:
 			case 0x34: /// TODO:
 			{
 				if (mem < 0xa0 || (mem & 0xf0) == 0xb0) col += fprintf(f, "<UNEXPECTED mem %02x for op 0x34>", mem);
-				if (mem >= 0xa0 && mem < 0xb0) col += fprintf(f,"mulcoeff%d   = sat(%c);", (mem >> 1) & 7, (mem & 1) ? 'B': 'A');
+				if (mem >= 0xa0 && mem < 0xb0) col += fprintf(f,"mulcoeffs[%d] = sat(%c);", (mem >> 1) & 7, (mem & 1) ? 'B': 'A');
 				if (mem >= 0xc0)
 				{
 					int sr = mem & 15;
@@ -1054,7 +1054,7 @@ protected:
 		fprintf(f, " |   ");		
 		fprintf(f, "%-4s %c, %c%s >> %d, %-19s", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
 		fprintf(f, "  |  ");
-		fprintf(f, "%s", getOpcodeDesc(address, opc, mem, coeff, shift, lastWasOp30, intmem));
+		fprintf(f, "%s", getOpcodeDesc(address, lastWasOp30, intmem));
 		fprintf(f, "\n");
 		lastWasOp30 = opc == 0x30;
 	}

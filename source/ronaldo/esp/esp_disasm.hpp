@@ -43,56 +43,6 @@ inline const char* getOpcodeName(uint8_t opc) {
 	}
 }
 
-/*
-Etter osc2 waveform = 0, mens osc1 control1 and 2 er satt til 1, så endres
-0x87, og så endres 82 for*/
-
-// Lookup and print opcode name from hex value (based on list at line 880)
-inline const char* getAddressComment(uint32_t addr, bool clr) {
-	// All strings are 16 chars, left-padded with spaces
-	switch (addr) {
-		case 0x0000: return "\n# Dump after setting note to 61, detune to 4 and mix to 424 \n";
-		case 0x0005: return "\n# Ring modulator start \n";
-		case 0x0008: return "# Ring modulator end\n\n";
-		case 0x0019: return "\n# Sets Osc2 range and fine, and affected by OscLFO1Depth \n";
-		case 0x0022: return "\n# Updated when pitch changes, first to 14336 then immediately back to 64\n";
-		case 0x0044: return "\n# Set oscillator balance\n";
-		case 0x0068: return "\n# Osc 2 sync start\n";
-		case 0x006b: return "\n# Osc 2 start\n";
-		case 0x00b2: return "# Osc 2 sync end\n\n";
-		case 0x00b9: return "# Osc 2 end\n\n";
-		case 0x0400: return "\n# Set X-mod depth\n";
-		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
-		case 0x041b: return "\n# Pitch. Includes LFO from mcu, affected by Oscillator shift\n";
-		case 0x043c: return "\n# Osc 1 start\n# Pretty sure this does a glide between old and new value of mix\n# Sets mix value to mixInput * 512 - iram[0x15] (general formula: input15bit * (mulA / 8192) if shift is 6\n";
-		case 0x043f: return "\n# \n# Pretty sure this does a glide between old and new value of detune. Sets detune value to detuneInput * 512 - prevIram[0x13]\n";
-		case 0x0442: return "\n# B = mixInputResult / 512 + prevIram[0x15], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
-		case 0x0445: return "\n# A = detuneInputResult / 512 + prevIram[0x13], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
-
-		case 0x0448: return "\n# Stores final calculation of mix value to iram[0x15] and mulcoeff[1].\n";
-		case 0x044a: return "\n# Stores final calculation of mix * 70 / 32 to iram[0]??\n";
-		case 0x044b: return "\n# Stores final calculation of detune value to iram[0x13], mulcoeff[0] and gram[0xf6]\n";
-		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??\n";
-		case 0x0450: return "\n# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?\n";
-		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others\n";
-		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
-		case 0x047a: return "\n# Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram\n";
-		case 0x0485: return "# Mulcoeffs[2] read here is set right after center oscillator pitch (0x453), could this be HPF cutoff-related?\n";
-		case 0x049e: return "# Osc 1 end\n\n\n";
-
-		default: {
-			return clr ? "\n" : "";
-		}
-	}
-	/*
-	no changes from PitchLfo2Depth, 
-	OscLfo1Depth changes pitch but no internal parameter.
-	Lfo1Rate and Lfo1Fade do not seem to have any effect at all.
-
-	*/
-}
-
-
 inline int getPrefix(char* buf, int pos) {
 	return snprintf(buf + pos, sizeof(buf) - pos, "                                                                                            |                      |                                             |  ");
 }
@@ -221,6 +171,15 @@ inline uint8_t getShiftbits(uint32_t opcode) {
 	return (opcode >> 8) & 3;
 }
 
+inline bool getAccumulatorFromAddress(uint32_t address, const uint8_t* intmem) {
+    uint32_t opcode = getOpcode(address, intmem);
+    uint8_t op = getOp(opcode);
+    uint8_t mem = getMem(opcode);
+    uint8_t coef = getCoef(opcode);
+    uint8_t shiftbits = getShiftbits(opcode);
+    return getAccumulator(op, mem, coef, shiftbits);
+}
+
 // Get high-precision 24-bit coefficient from 0x04/0x14 instruction followed by up to three 0x34 instructions
 inline uint32_t getHiPrecisionCoef(uint32_t address, const uint8_t* intmem) {
 	uint32_t opcode = getOpcode(address, intmem);
@@ -271,6 +230,66 @@ inline const char* getCoefComment(uint32_t address, const uint8_t* intmem) {
 }
 
 
+/*
+Etter osc2 waveform = 0, mens osc1 control1 and 2 er satt til 1, så endres
+0x87, og så endres 82 for*/
+
+// Lookup and print opcode name from hex value (based on list at line 880)
+inline const char* getAddressComment(uint32_t address, const uint8_t* intmem, bool clr) {
+    const bool prevAccIsDifferent = false;
+    bool acc = getAccumulatorFromAddress(address, intmem);
+
+    // There may be empty addresses between two instructions with different accumulators, so we have to search backwards
+    uint32_t prevAddr = address - 1;
+    while(getOpcode(prevAddr, intmem) == 0 && prevAddr > 0) {
+        prevAddr--;
+    }
+    bool prevAcc = address > 0 ? getAccumulatorFromAddress(prevAddr, intmem) : false;
+
+	// All strings are 16 chars, left-padded with spaces
+	switch (address) {
+		case 0x0000: return "\n# Dump after setting note to 61, detune to 4 and mix to 424 \n";
+		case 0x0005: return "\n# Ring modulator start \n";
+		case 0x0008: return "# Ring modulator end\n\n";
+		case 0x0019: return "\n# Sets Osc2 range and fine, and affected by OscLFO1Depth \n";
+		case 0x0022: return "\n# Updated when pitch changes, first to 14336 then immediately back to 64\n";
+		case 0x0044: return "\n# Set oscillator balance\n";
+		case 0x0068: return "\n# Osc 2 sync start\n";
+		case 0x006b: return "\n# Osc 2 start\n";
+		case 0x00b2: return "# Osc 2 sync end\n\n";
+		case 0x00b9: return "# Osc 2 end\n\n";
+		case 0x0400: return "\n# Set X-mod depth\n";
+		case 0x0407: return "\n# Updated when pitch changes, first to 14336 then immediately back to 32\n";
+		case 0x041b: return "\n# Pitch. Includes LFO from mcu, affected by Oscillator shift\n";
+		case 0x043c: return "\n# Osc 1 start\n# Pretty sure this does a glide between old and new value of mix\n# Sets mix value to mixInput * 512 - iram[0x15] (general formula: input15bit * (mulA / 8192) if shift is 6\n";
+		case 0x043f: return "\n# \n# Pretty sure this does a glide between old and new value of detune. Sets detune value to detuneInput * 512 - prevIram[0x13]\n";
+		case 0x0442: return "\n# B = mixInputResult / 512 + prevIram[0x15], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
+		case 0x0445: return "\n# A = detuneInputResult / 512 + prevIram[0x13], Updated when pitch changes, first to 14336 then immediately back to 32.\n";
+
+		case 0x0448: return "\n# Stores final calculation of mix value to iram[0x15] and mulcoeff[1].\n";
+		case 0x044a: return "\n# Stores final calculation of mix * 70 / 32 to iram[0]??\n";
+		case 0x044b: return "\n# Stores final calculation of detune value to iram[0x13], mulcoeff[0] and gram[0xf6]\n";
+		case 0x044f: return "\n# Guess (NOT CONFIRMED): iram[0x65] is pitch? 7 reads of 0x65, with 6 having additional data added, looks like 7 saws. BUT 44f and 450 are equal, without any saving??\n";
+		case 0x0450: return "\n# A is read from 0x06 and result written to 0x05 - looks like reading from previous iteration?\n";
+		case 0x0457: return "\n# Updated forever when osc2 waveform is set to 1: NB! += iram[0x65, doesn't match the others\n";
+		case 0x045c: return "\n# Updated when osc2 waveform is set to 1\n";
+		case 0x047a: return "\n# Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram\n";
+		case 0x0485: return "# Mulcoeffs[2] read here is set right after center oscillator pitch (0x453), could this be HPF cutoff-related?\n";
+		case 0x049e: return "# Osc 1 end\n\n\n";
+
+		default: {
+			return clr || acc != prevAcc ? "\n" : "";
+		}
+	}
+	/*
+	no changes from PitchLfo2Depth, 
+	OscLfo1Depth changes pitch but no internal parameter.
+	Lfo1Rate and Lfo1Fade do not seem to have any effect at all.
+
+	*/
+}
+
+
 // Recursively search backwards from address to find previous instruction operating on same accumulator.
 // If no work is done on an accumulator, the current value will propagate to the next place, so after three
 // repetitions all values in the accumulator are the same, meaning we can just look for the last time the accumulator was written to.
@@ -298,7 +317,13 @@ inline uint16_t findPrevAccInstruction(uint16_t address, bool acc, const uint8_t
 
 
 // Get opcode description with detailed operation explanation
-inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int8_t coeff, uint8_t shiftbits, bool lastWasOp30, const uint8_t* intmem) {
+inline const char* getOpcodeDesc(uint16_t address, bool lastWasOp30, const uint8_t* intmem) {
+
+    uint32_t opcode = getOpcode(address, intmem);
+    uint8_t opc = getOp(opcode);
+    uint8_t mem = getMem(opcode);
+    uint8_t coeff = getCoef(opcode);
+    uint8_t shiftbits = getShiftbits(opcode);
 
 	const int shifts[4] = {7, 6, 5, 3};
 	const int shift = shifts[shiftbits & 3];
@@ -323,6 +348,8 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
     static char rawBStr[64];
     snprintf(rawBStr, sizeof(rawBStr), "raw(B) @ [0x%04x]", prevAccBAddress);
 
+    const char* accChar = acc ? "B" : "A";
+    const char* satAccStr = acc ? satBStr : satAStr;
 
     static char buf[8192];
     switch (opc) {
@@ -344,7 +371,7 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 			bool clr = !(coeff & 1);
 			bool weird = (coeff & 0x1c) == 0x1c;
 			const char* accChar = (coeff & 2) ? "B" : "A";
-			const char* satAccStr = (coeff & 2) ? satBStr : satAStr;
+			satAccStr = (coeff & 2) ? satBStr : satAStr;
 			const char* clrChar = clr ? " " : "+";
 			int pos = 0;
 
@@ -393,10 +420,11 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 			return buf;
 		}
         case 0x34: {
-			if (mem >= 0xa0 && mem < 0xb0) {
-				return ""; // loads mulcoeff only, coeff is always 0 it seems
+                if (mem >= 0xa0 && mem < 0xb0) {
+                satAccStr = (mem & 1) ? satBStr : satAStr;                
+                snprintf(buf, sizeof(buf), "mulcoeffs[%d] = %s;\n", (mem >> 1) & 7, satAccStr); return buf;
 			} else if (mem >= 0xc0) {
-				const char* accChar = (mem & 0x20) ? "B" : "A";
+				accChar = (mem & 0x20) ? "B" : "A";
 				const char* clrChar = (mem & 0x10) ? " " : "+";
 				switch (mem & 0xf)
 				{
