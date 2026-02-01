@@ -196,8 +196,10 @@ inline bool getAccumulator(uint8_t opc, uint8_t mem, uint8_t coef, uint8_t shift
 	return acc;
 }
 
-// Recursively search backwards from address to find previous instruction operating on same accumulator
-inline uint16_t findPrevAccInstruction(uint16_t address, bool acc, const int8_t* intmem) {
+// Recursively search backwards from address to find previous instruction operating on same accumulator.
+// If no work is done on an accumulator, the current value will propagate to the next place, so after three
+// repetitions all values in the accumulator are the same, meaning we can just look for the last time the accumulator was written to.
+inline uint16_t findPrevAccInstruction(uint16_t address, bool acc, const uint8_t* intmem) {
 	// Never pass address 0x0000 or 0x4000 (0x1000 in word addressing)
 	if (address == 0 || address == 0x400) return 0;
 	
@@ -233,28 +235,41 @@ inline uint16_t findPrevAccInstruction(uint16_t address, bool acc, const int8_t*
 
 
 // Get opcode description with detailed operation explanation
-inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int8_t coeff, uint8_t shiftbits, bool lastWasOp30, const int8_t* intmem) {
+inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int8_t coeff, uint8_t shiftbits, bool lastWasOp30, const uint8_t* intmem) {
 
 	const int shifts[4] = {7, 6, 5, 3};
 	const int shift = shifts[shiftbits & 3];
 	const char* acc = (shiftbits & 2) ? "B" : "A";
 	const int gramShift = (shiftbits & 1) ? 6 : 7;
 
+    // accumulators are ring buffers. When reading sat(A) or raw(A), we need to find the last instruction that wrote to that accumulator 3 or more steps
+    // back - it gets a bit confusing since there may be two instructions in-between that work on the same accumulator, but those values are not yet
+    // available through sat(A) etc.
     const uint32_t prevAccAAddress = address < 2 ? 0 : findPrevAccInstruction(address-2, false, intmem);
     const uint32_t prevAccBAddress = address < 2 ? 0 : findPrevAccInstruction(address-2, true, intmem);
 
-    // read backwards starting with curr inst. -3. If instr == 0 eller != acc, go backwards
+    static char satAStr[64];
+    snprintf(satAStr, sizeof(satAStr), "sat(A) @ [0x%04x]", prevAccAAddress);
+
+    static char satBStr[64];
+    snprintf(satBStr, sizeof(satBStr), "sat(B) @ [0x%04x]", prevAccBAddress);
+
+    static char rawAStr[64];
+    snprintf(rawAStr, sizeof(rawAStr), "raw(A) @ [0x%04x]", prevAccAAddress);
+
+    static char rawBStr[64];
+    snprintf(rawBStr, sizeof(rawBStr), "raw(B) @ [0x%04x]", prevAccBAddress);
 
     static char buf[8192];
     switch (opc) {
         case 0x00: snprintf(buf, sizeof(buf), "A += %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
         case 0x04: snprintf(buf, sizeof(buf), "A  = %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
-        case 0x08: snprintf(buf, sizeof(buf), "A  = %s", getMACString("sat(A)", coeff, shift)); return buf;
-        case 0x0C: snprintf(buf, sizeof(buf), "A  = %s", getMACString("sat(B)", coeff, shift)); return buf;
+        case 0x08: snprintf(buf, sizeof(buf), "A  = %s", getMACString(satAStr, coeff, shift)); return buf;
+        case 0x0C: snprintf(buf, sizeof(buf), "A  = %s", getMACString(satBStr, coeff, shift)); return buf;
         case 0x10: snprintf(buf, sizeof(buf), "B += %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
         case 0x14: snprintf(buf, sizeof(buf), "B  = %s", getMACString(getMulInputAFromMem(mem), coeff, shift)); return buf;
-        case 0x18: snprintf(buf, sizeof(buf), "B  = %s", getMACString("sat(A)", coeff, shift)); return buf;
-        case 0x1C: snprintf(buf, sizeof(buf), "B  = %s", getMACString("sat(B)", coeff, shift)); return buf;
+        case 0x18: snprintf(buf, sizeof(buf), "B  = %s", getMACString(satAStr, coeff, shift)); return buf;
+        case 0x1C: snprintf(buf, sizeof(buf), "B  = %s", getMACString(satBStr, coeff, shift)); return buf;
         //case 0x20: snprintf(buf, sizeof(buf), "%s += gram[0x%02x] * %d >> %d", acc, mem, coeff, gramShift); return buf;
         case 0x20: snprintf(buf, sizeof(buf), "%s += gram[0x%02x]", acc, mem); return buf;
         //case 0x24: snprintf(buf, sizeof(buf), "%s  = gram[0x%02x] * %d >> %d", acc, mem, coeff, gramShift); return buf;
@@ -265,16 +280,17 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 			bool clr = !(coeff & 1);
 			bool weird = (coeff & 0x1c) == 0x1c;
 			const char* accChar = (coeff & 2) ? "B" : "A";
+			const char* satAccStr = (coeff & 2) ? satBStr : satAStr;
 			const char* clrChar = clr ? " " : "+";
 			int pos = 0;
 
 			if (coeff & 4) {
 				if(weird){
-					pos += snprintf(buf + pos, sizeof(buf) - pos, "sat(%s)\n", accChar);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "%s\n", satAccStr);
 					pos += getPrefix(buf, pos);
 					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = mulA\n", mem);					
 				} else {
-					pos += snprintf(buf + pos, sizeof(buf) - pos, "mulA = (sat(%s) >= 0 ? 0x7fffff : 0xFF800000)\n", accChar);
+					pos += snprintf(buf + pos, sizeof(buf) - pos, "mulA = (%s >= 0 ? 0x7fffff : 0xFF800000)\n", satAccStr);
 					pos += getPrefix(buf, pos);
 					pos += snprintf(buf + pos, sizeof(buf) - pos, "iram[0x%02x] = mulA\n", mem);
 				}
@@ -334,8 +350,8 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 						}
 					}
 					case 0x7: snprintf(buf, sizeof(buf), "eram.eramVarOffset = %s", accChar); return buf;
-					case 0xa: snprintf(buf, sizeof(buf), "readback_regs = sat(%s)", accChar); return buf;
-					case 0xb: snprintf(buf, sizeof(buf), "eram.eramWriteLatch = sat(%s)", mem & 0x20 ? "B" : "A"); return buf;
+					case 0xa: snprintf(buf, sizeof(buf), "readback_regs = %s", (mem & 0x20) ? satBStr : satAStr); return buf;
+					case 0xb: snprintf(buf, sizeof(buf), "eram.eramWriteLatch = %s", (mem & 0x20) ? satBStr : satAStr); return buf;
 					case 0xc:
 					case 0xd:
 					case 0xe: // TODO: These have a multiplication as well, need to figure out how multInputA_24 works in this case
@@ -349,19 +365,19 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
 			}
 
 		}
-        case 0x38: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
+        case 0x38: snprintf(buf, sizeof(buf), "A += %s", getMACString(satAStr, coeff, shift)); return buf;
         //case 0x38: return "";
-        case 0x3C: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(B)", coeff, shift)); return buf;
+        case 0x3C: snprintf(buf, sizeof(buf), "A += %s", getMACString(satBStr, coeff, shift)); return buf;
         //case 0x3C: return "";
-        case 0x40: snprintf(buf, sizeof(buf), "A += %s", getMACString("raw(A)", coeff, shift)); return buf;
-        case 0x44: snprintf(buf, sizeof(buf), "A  = %s", getMACString("raw(A)", coeff, shift)); return buf;
-        case 0x48: snprintf(buf, sizeof(buf), "A += %s", getMACString("rect(sat(A))", coeff, shift)); return buf;
-        case 0x4C: snprintf(buf, sizeof(buf), "A  = %s", getMACString("rect(sat(A))", coeff, shift)); return buf;
+        case 0x40: snprintf(buf, sizeof(buf), "A += %s", getMACString(rawAStr, coeff, shift)); return buf;
+        case 0x44: snprintf(buf, sizeof(buf), "A  = %s", getMACString(rawAStr, coeff, shift)); return buf;
+        case 0x48: { static char rectSatA[80]; snprintf(rectSatA, sizeof(rectSatA), "rect(%s)", satAStr); snprintf(buf, sizeof(buf), "A += %s", getMACString(rectSatA, coeff, shift)); return buf; }
+        case 0x4C: { static char rectSatA[80]; snprintf(rectSatA, sizeof(rectSatA), "rect(%s)", satAStr); snprintf(buf, sizeof(buf), "A  = %s", getMACString(rectSatA, coeff, shift)); return buf; }
         case 0x50: return "setcondition true, clear A. Some skipfield magic";
         case 0x54: return "N/A";
-        case 0x58: snprintf(buf, sizeof(buf), "A += %s", getMACString("sat(A)", coeff, shift)); return buf;
+        case 0x58: snprintf(buf, sizeof(buf), "A += %s", getMACString(satAStr, coeff, shift)); return buf;
         //case 0x58: return "";
-        case 0x5C: snprintf(buf, sizeof(buf), "B += %s", getMACString("sat(B)", coeff, shift)); return buf;
+        case 0x5C: snprintf(buf, sizeof(buf), "B += %s", getMACString(satBStr, coeff, shift)); return buf;
         //case 0x5C: return "";
         case 0x60: snprintf(buf, sizeof(buf), "A += (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
         case 0x64: snprintf(buf, sizeof(buf), "A  = (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
@@ -369,8 +385,8 @@ inline const char* getOpcodeDesc(uint16_t address, uint8_t opc, uint8_t mem, int
         case 0x6C: snprintf(buf, sizeof(buf), "A  = (1-A)*%d if A is positive, %d * (A with sign removed) if negative", coeff, coeff); return buf;
         case 0x70: snprintf(buf, sizeof(buf), "A += (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
         case 0x74: snprintf(buf, sizeof(buf), "A  = (1-abs(%s)) * %d", getMulInputAFromMem(mem), coeff); return buf;
-        case 0x78: snprintf(buf, sizeof(buf), "A += (1-A)*%d >> %d if A is negative, sat(A) * %d >> %d if positive", coeff, shift, coeff, shift); return buf;
-        case 0x7C: snprintf(buf, sizeof(buf), "A  = (1-sat(A))*%d >> %d if A is negative, sat(A) * %d >> %d if positive", coeff, shift, coeff, shift); return buf;
+        case 0x78: snprintf(buf, sizeof(buf), "A += (1-A)*%d >> %d if A is negative, %s * %d >> %d if positive", coeff, shift, satAStr, coeff, shift); return buf;
+        case 0x7C: snprintf(buf, sizeof(buf), "A  = (1-%s)*%d >> %d if A is negative, %s * %d >> %d if positive", satAStr, coeff, shift, satAStr, coeff, shift); return buf;
         default: return "<Unknown OPC>";
     }
 }
