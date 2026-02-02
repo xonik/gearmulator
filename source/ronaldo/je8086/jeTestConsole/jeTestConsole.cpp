@@ -365,7 +365,7 @@ namespace
 				break;
 			case 'd':  // Osc1Control1 increment by 1
 				if (g_faderOsc1Ctrl1 < 127) ++g_faderOsc1Ctrl1;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, 127);
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control1, g_faderOsc1Ctrl1);
 				//std::cout << "Osc1 Control1: " << g_faderOsc1Ctrl1 << "\n";
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
@@ -376,13 +376,13 @@ namespace
 				std::cout << "\nOsc1 Control1," << g_faderOsc1Ctrl1;
 				break;
 			case 'm':  // Osc1Control2 minimum (0)
-				if (g_faderOsc1Ctrl2 < 127) g_faderOsc1Ctrl2+=8;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
+				if (g_faderOsc1Ctrl2 < 127) ++g_faderOsc1Ctrl2;
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'M':  // Osc1Control2 maximum (127)
 				if (g_faderOsc1Ctrl2 > 0) --g_faderOsc1Ctrl2;
-				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, 127);
+				sendParameterChange(PerformanceData::PatchUpper, Patch::Osc1Control2, g_faderOsc1Ctrl2);
 				std::cout << "\nOsc1 Control2," << g_faderOsc1Ctrl2;
 				break;
 			case 'z':  // Cycle through Osc1Waveform values (0-6)
@@ -414,9 +414,10 @@ namespace
 					if (notes[i] < 127) ++notes[i];
 					addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
 				}
-				std::cout << "All notes increased by 1: ";
-				for (int i = 0; i < 8; ++i) std::cout << notes[i] << " ";
-				std::cout << std::endl;
+				//std::cout << "All notes increased by 1: ";
+				std::cout << "\nnote," << notes[0];
+				//for (int i = 0; i < 8; ++i) std::cout << notes[i] << " ";
+				//std::cout << std::endl;
 				break;
 			case 'b': // Decrease all 8 notes by 1
 				for (int i = 0; i < 8; ++i) {
@@ -429,9 +430,12 @@ namespace
 				break;
 			case 'N': // Increase all 8 notes by 1
 				for (int i = 0; i < 8; ++i) {
-					addMidiEvent(synthLib::M_NOTEOFF, notes[i], 127);
+					if (notes[i] > 0) --notes[i];
+					addMidiEvent(synthLib::M_NOTEON, notes[i], 127);
 				}
-				std::cout << "All notes off\n";
+				//std::cout << "All notes increased by 1: ";
+				std::cout << "\nnote," << notes[0];
+				
 				break;
 			case 'c':  // Cycle through all Patch parameters (0 then 1 for each)
 				cyclePatchParameter();

@@ -178,7 +178,7 @@ public:
 		
 		if (pc == pcjumpat) {pc = pcjumpto; pcjumpat = -1;}
 
-		const uint32_t pcNow = 0x4000 + this->pc;
+		const uint32_t pcNow = 0x0400 + this->pc;
 		// Decode instr
 		const uint32_t instr = pram[pc++]; // PC advances here.
 		if (!instr) {
