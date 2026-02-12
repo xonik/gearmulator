@@ -20,3 +20,4 @@ bin/
 .idea/vcs.xml
 esp_jit.log
 ram_dump.bin
+je8086_out.wav

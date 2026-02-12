@@ -530,7 +530,7 @@
 // Lagrer ny verdi for osc1 i 0x05
 0454; 00 40 14 00 [o:0x40,m:0x05,s:0x00,c:0x00]            iram1[0x05] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x05]          |  A += 0, mulA=raw(A)
 
-// 15 MSB multiplication of iram[0x65] with mulcoeff0 (= detune amount), detune value is whatever is input from the mcu
+// 15 MSB multiplication of iram[0x65] with mulcoeff0 (= detune amount), detune value is whatever is input from the mcu 4775677
 0455; 00 31 94 00 [o:0x30,m:0x65,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0x65]          |  mulA = iram[0x65]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB

@@ -246,18 +246,42 @@ public:
 			case 0x2c: printf("Unexpected Opcode 0x2c. This should be unused\n"); break;
 			case 0x30:
 			{
+			  // C = !Clear
+			  // A = Accumulator
+			  // L = Load mulInputA, if weird: detect sign. Save to iram[mempos].
+			  // I = invert B
+			  // F = Flips B amplitude around a midpoint between 0 and 1 (1-x)
+			  // B = source for mulInputB - mulcoeffs, eram eller mulcoeffs 5??
+			  // Coeff: BBBFILAC
+
 				acc = (coef & 2);
 				clr = !(coef & 1);
+
+			  // Coeff: xxxWWWxx
 				bool weird = (coef & 0x1c) == 0x1c;
+
+				//xxxxxMxx
+				//Loads accumulator 3 steps (or more) back into mulInputA.
+				//If weird, works as a sign detector, setting value to +max/-max.
+				//If not run, mulInputA is determined by mem field as usual.
 				if (coef & 4) {
 					mulInputA_24 = (acc ? accB : accA).getPipelineSat24();
 					if (weird) mulInputA_24 = (mulInputA_24 >= 0) ? 0x7fffff : 0xFF800000;
 					iram[mempos] = mulInputA_24;
 				}
 				mulInputB_24 = shared->mulcoeffs[coef >> 5];
+
+				//xxx MSB = 6
 				if ((coef >> 5) == 6) mulInputB_24 = (shared->eram.eramVarOffset << 11) & 0x7fffff;
+				//xxx MSB = 7
 				if ((coef >> 5) == 7) mulInputB_24 = shared->mulcoeffs[5];
+
+				//xxxx Ixxx // invert
 				if ((coef & 8) && !weird) mulInputB_24 *= -1;
+
+				//xxxM xxxx
+				// Flips amplitude around a midpoint between 0 and 1. Does not flip sign bit. Can be used
+				// for crossfading with a single coefficient, or invert an envelope etc.
 				if ((coef & 16) && mulInputB_24 >= 0 && !weird) mulInputB_24 = (~mulInputB_24 & 0x7fffff);
 				else if ((coef & 16) && mulInputB_24 < 0 && !weird) mulInputB_24 = ~(mulInputB_24 & 0x7fffff);
 				last_mulInputB_24 = mulInputB_24;
@@ -265,8 +289,14 @@ public:
 			}
 				break;
 			case 0x34:
+			  // 0xb0 = 1011 0000 // everything under a0 and [0xb0, 0xc0> is ignored.
 				if (mem < 0xa0 || (mem & 0xf0) == 0xb0) printf("Unexpected value for mem (%02x) with opcode 0x34\n", mem);
+
+			  // 0xa0 = 1010 0000 // Hva som helst for 4 LSB: MMMA, M = mulcoeff, A = Accumulator
+			  // Saves accumulator (selected by mem LSB) (3 steps or more back) into mulcoeffs[mem >> 1]
 				if (mem >= 0xa0 && mem < 0xb0) shared->mulcoeffs[(mem >> 1) & 7] = ((mem & 1) ? accB : accA).getPipelineSat24();
+
+			  // 11ACPPPP
 				if (mem >= 0xc0)
 				{
 					acc = (mem & 0x20);
@@ -274,24 +304,24 @@ public:
 					DspAccumulator &ac = (acc) ? accB : accA;
 					switch (mem & 0xf)
 					{
-						case 0x0: if (!ac.getPipelineRawFull()) jumpto(coef); break;
-						case 0x1: if (ac.getPipelineRawFull() < 0) jumpto(coef); break;
-						case 0x2: if (ac.getPipelineRawFull() > 0) jumpto(coef); break;
-						case 0x3: jumpto(coef); break;
+						case 0x0: if (!ac.getPipelineRawFull()) jumpto(coef); break; // Jump on 0
+						case 0x1: if (ac.getPipelineRawFull() < 0) jumpto(coef); break; // Jump on < 0
+						case 0x2: if (ac.getPipelineRawFull() > 0) jumpto(coef); break; // Jump on > 0
+						case 0x3: jumpto(coef); break; // Jump
 						case 0x4: /* set INT pins */ break;
 						case 0x6:
-							// double precision
+							// double precision multiplication
 							mulInputA_24 = last_mulInputA_24 >> 7;
 							if (lastMul30) mulInputB_24 = (last_mulInputB_24 >> 9) & 0x7f;
 							break;
-						case 0x7: shared->eram.eramVarOffset = ac.getPipelineRawFull(); break;
-						case 0xa: *((int32_t*)&shared->readback_regs) = ac.getPipelineSat24(); break;
-						case 0xb: shared->eram.eramWriteLatch = ac.getPipelineSat24(); break;
+						case 0x7: shared->eram.eramVarOffset = ac.getPipelineRawFull(); break; // sets eram address?
+						case 0xa: *((int32_t*)&shared->readback_regs) = ac.getPipelineSat24(); break; // writes to readback reg, read by uC
+						case 0xb: shared->eram.eramWriteLatch = ac.getPipelineSat24(); break; // writes to eram?
 						case 0xc:
 						case 0xd:
 						case 0xe:
 						case 0xf:
-							mulInputA_24 = shared->eram.eramReadLatch;
+							mulInputA_24 = shared->eram.eramReadLatch; // reads from eram into iram[mem| 0xf0]
 							writeIRAM(mulInputA_24, mem | 0xf0);
 							break;
 						default:
@@ -322,6 +352,7 @@ public:
 			case 0x60: mulInputA_24 = (~mulInputA_24 & 0x7fffff); break;
 			case 0x64: clr = true; mulInputA_24 = (~mulInputA_24 & 0x7fffff); break;
 			case 0x68:
+			  // -max to 0 to max -> 0 to max to 0: max - abs(sat(a))
 				iram[mempos] = mulInputA_24 = accA.getPipelineSat24();
 				if (mulInputA_24 >= 0) mulInputA_24 = ~mulInputA_24;
 				mulInputA_24 &= 0x7fffff;
@@ -332,6 +363,7 @@ public:
 				mulInputA_24 &= 0x7fffff;
 				clr = true;
 				break;
+				// -max to 0 to max -> max to 0 to max, or abs(x)???
 			case 0x70: mulInputA_24 = (~mulInputA_24 & 0x7fffff); break;
 			case 0x74: clr = true; mulInputA_24 = (~mulInputA_24 & 0x7fffff); break;
 			case 0x78:
@@ -348,7 +380,8 @@ public:
 			
 			default: printf("mysterious\n"); break; // TODO: few more opcodes here
 		}
-		
+
+    // TODO: Not entirely sure when this is used.
 		// Prevents result from being added to accumulator
 		if (skipfield & 1) mulInputA_24 = 0;
 
@@ -406,10 +439,7 @@ public:
 	}
 
 	// Interface with hardware / other chips etc.
-	void writeGRAM(int32_t val, uint8_t offset) {
-		//printf("ESP::writeGRAM offset=0x%02x val=0x%06x\n", offset, val);
-		core0.writeGRAM(val, offset);
-	}
+	void writeGRAM(int32_t val, uint8_t offset) {core0.writeGRAM(val, offset);}
 	int32_t readGRAM(uint8_t offset) const {return core0.readGRAM(offset);}
 	int32_t readIRAM0(uint8_t offset) const {return core0.readIRAM(offset);}
 	int32_t readIRAM1(uint8_t offset) const {return core1.readIRAM(offset);}

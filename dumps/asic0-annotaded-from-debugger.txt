@@ -572,7 +572,7 @@
 // Adds pitch again, new value is 430037
 0457; 00 01 95 40 [o:0x00,m:0x65,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x65]          |  A += iram[0x65]
 
-// Adds previous value of calc, 4410139, new A is 4840176. But where does it go? --> ligger I hist[1], vi er på hist[2]
+// Adds previous value of calc, 5931226, new A is 6361263. But where does it go? --> ligger I hist[1], vi er på hist[2]
 0458; 00 00 21 40 [o:0x00,m:0x08,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x08]          |  A += iram[0x08]
 
 // Multiplies pitch with detune with 14 bit precision - 421800 * 164351. After first mult, A is 6590. After DMAC it is 8237.
@@ -582,7 +582,7 @@
                                                                                             |                      |                                             |  A  = (mulA * (mulB >> 16)) >> 7
 045a; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34         Special |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7 // After this, A is 8237
 
-// Stores value of A, which is now 4840176. But that's the result of line 0458, not of the DMac above and nothing from the accumulator
+// Stores value of A, which is now 6361263. But that's the result of line 0458, not of the DMac above and nothing from the accumulator
 045b; 00 40 1c 00 [o:0x40,m:0x07,s:0x00,c:0x00]            iram1[0x07] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x07]          |  A += 0, mulA=raw(A)
 
 # Updated when osc2 waveform is set to 1
@@ -590,6 +590,7 @@
 045c; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65] // A=421800
 
 // subtract satA, which is 8237 at this point, seemingly the result of line 045a??? - it looks like results of MAC during memory saves are ignored?? - so this means we're adding the same detune but negative
+// A === 4775677
 045d; 00 58 00 80 [o:0x58,m:0x00,s:0x00,c:0x80]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x80 >> 7, sat(A)               |  A += sat(A) * -128 >> 7 
 
 // Adds previously stored value
@@ -605,6 +606,7 @@
 // Stores 45064 to iram 0x09, raw value of A, but perhaps A from 045e???
 0461; 00 40 24 00 [o:0x40,m:0x09,s:0x00,c:0x00]            iram1[0x09] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x09]          |  A += 0, mulA=raw(A)
 
+// A === 3650948
 // Loads pitch and adds (8237 * 102) >> 5. 8237 is that weird detune times pitch we get all the way. This multiplies that by 3.1875. Then adds previous
 0462; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
 0463; 00 58 02 66 [o:0x58,m:0x00,s:0x02,c:0x66]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x66 >> 5, sat(A)               |  A += sat(A) * 102 >> 5 // after this, A is 448055, so detune is 26255.
@@ -622,8 +624,9 @@
 0467; 00 40 2c 00 [o:0x40,m:0x0b,s:0x00,c:0x00]            iram1[0x0b] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0b]          |  A += 0, mulA=raw(A)
 
 // Loads pitch and adds (8237 * -103) >> 5, Multiplies detune by 3.21875. Then adds previoys
+/// A === 8381119
 0468; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
-0469; 00 58 02 99 [o:0x58,m:0x00,s:0x02,c:0x99]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x99 >> 5, sat(A)               |  A += sat(A) * -103 >> 5 // after this A is 395287
+0469; 00 58 02 99 [o:0x58,m:0x00,s:0x02,c:0x99]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x99 >> 5, sat(A)               |  A += sat(A) * -103 >> 5 // after this A is 395287, so detune is 26513
 046a; 00 00 39 40 [o:0x00,m:0x0e,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x0e]          |  A += iram[0x0e] // A is now 7224810
 
 // After this, A is once again 8237
@@ -636,6 +639,7 @@
 // Storing results of 046a, 7224810
 046d; 00 40 34 00 [o:0x40,m:0x0d,s:0x00,c:0x00]            iram1[0x0d] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0d]          |  A += 0, mulA=raw(A)
 
+/// A ==== 467103
 // Loads pitch and adds detune * 44 >> 3 (8237 * 44) >> 3 = 
 046e; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
 046f; 00 58 03 2c [o:0x58,m:0x00,s:0x03,c:0x2c]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0x2c >> 3, sat(A)               |  A += sat(A) * 44 >> 3 // After this, A is 467103. Detune is 45303
@@ -652,6 +656,7 @@
 0473; 00 40 3c 00 [o:0x40,m:0x0f,s:0x00,c:0x00]            iram1[0x0f] = A                  | 0x40 kStoreIRAMUnsat |   MAC  A,  #0x00 >> 7, iram1[0x0f]          |  A += 0, mulA=raw(A)
 
 
+/// A === 375466
 // Loads pitch and adds detune * -45 >> 3, (8237 * -45 )/ 8 =-46 333,125-46333
 0474; 00 05 95 40 [o:0x04,m:0x65,s:0x01,c:0x40]                                             | 0x04            kMac |   MUL  A,  #0x40 >> 6, iram1[0x65]          |  A  = iram[0x65]
 0475; 00 58 03 d3 [o:0x58,m:0x00,s:0x03,c:0xd3]            iram1[0x00] = sat(A)             | 0x58      kStoreIRAM |   MAC  A,  #0xd3 >> 3, sat(A)               |  A += sat(A) * -45 >> 3 // A is 375466, detune is 46334
@@ -667,30 +672,39 @@
 
 
 # Guess (NOT CONFIRMED): This is the summing of the waves, six multiplies by mulcoeffs (MIX) and one is normal. All waves read from iram
-Iram 11: -934210, 2183167 (input - 1) - res 608180.
+
+Iram 11: -7537654, mulcoeffs[1] = 2183167 (input - 1) - res -1943302.
 047a; 00 30 44 22 [o:0x30,m:0x11,s:0x00,c:0x22]                                             | 0x30        kMulCoef |   MUL  B,  mulc1 >> 7, iram1[0x11]          |  mulA = iram[0x11]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 7
 
-
+Iram 6 = -8000810, res = -4006011
 047b; 00 30 34 23 [o:0x30,m:0x0d,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0d]          |  mulA = iram[0x0d]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
+Iram 9 is 92969, res = -3982043
 047c; 00 30 24 23 [o:0x30,m:0x09,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x09]          |  mulA = iram[0x09]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
+Iram 5 is -4968160, res = -4952387
 047d; 00 10 14 19 [o:0x10,m:0x05,s:0x00,c:0x19]                                             | 0x10            kMac |   MAC  B,  #0x19 >> 7, iram1[0x05]          |  B += iram[0x05] * 25 >> 7
+
+Iram 7 is 6361263, res = -3312374
 047e; 00 30 1c 23 [o:0x30,m:0x07,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x07]          |  mulA = iram[0x07]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
+
+Iram 0b is 3650948, res = -2371114
 047f; 00 30 2c 23 [o:0x30,m:0x0b,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0b]          |  mulA = iram[0x0b]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
+
+Iram 0f is 6940947, res = 581652
 0480; 00 30 3c 23 [o:0x30,m:0x0f,s:0x00,c:0x23]                                             | 0x30        kMulCoef |   MAC  B,  mulc1 >> 7, iram1[0x0f]          |  mulA = iram[0x0f]
                                                                                             |                      |                                             |  mulB = mulcoeffs[1]
                                                                                             |                      |                                             |  save mulB to lastMulB

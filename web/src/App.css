@@ -1,0 +1,153 @@
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+h1 {
+  color: #e0e0ff;
+  margin-bottom: 0.5rem;
+}
+
+.intro {
+  color: #aaa;
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+.intro code {
+  background: #333;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: #00ff88;
+}
+
+.graphs-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.graph-container {
+  background: #12121f;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.graph-container h2 {
+  margin: 0 0 1rem 0;
+  color: #00ff88;
+  font-family: monospace;
+  font-size: 1.2rem;
+}
+
+.graph-container canvas {
+  border-radius: 8px;
+  display: block;
+}
+
+.graph-container .description {
+  margin: 1rem 0 0 0;
+  color: #888;
+  font-size: 0.85rem;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.graph-container .description code {
+  color: #ff6688;
+}
+
+.code-block {
+  background: #12121f;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.code-block h3 {
+  margin: 0 0 1rem 0;
+  color: #aaaacc;
+}
+
+.code-block pre {
+  background: #1a1a2e;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #ccc;
+}
+
+@media (max-width: 900px) {
+  .graphs-container {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.value-table {
+  background: #12121f;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  max-width: 600px;
+  margin: 2rem auto 0;
+}
+
+.value-table h3 {
+  margin: 0 0 1rem 0;
+  color: #aaaacc;
+}
+
+.value-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+}
+
+.value-table th,
+.value-table td {
+  padding: 0.5rem 1rem;
+  text-align: center;
+  border: 1px solid #333355;
+}
+
+.value-table th {
+  background: #1a1a2e;
+  color: #00ff88;
+}
+
+.value-table td {
+  color: #ccc;
+}
+
+.value-table td.highlight {
+  background: #2a1a1e;
+  color: #ff6688;
+  font-weight: bold;
+}
+
+.value-table .table-note {
+  margin: 1rem 0 0 0;
+  color: #888;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.value-table .table-note code {
+  color: #ff6688;
+  background: #1a1a2e;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
