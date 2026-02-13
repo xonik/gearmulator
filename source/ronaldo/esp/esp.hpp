@@ -246,18 +246,18 @@ public:
 			case 0x2c: printf("Unexpected Opcode 0x2c. This should be unused\n"); break;
 			case 0x30:
 			{
-			  // C = !Clear
-			  // A = Accumulator
-			  // L = Load mulInputA, if weird: detect sign. Save to iram[mempos].
-			  // I = invert B
-			  // F = Flips B amplitude around a midpoint between 0 and 1 (1-x)
-			  // B = source for mulInputB - mulcoeffs, eram eller mulcoeffs 5??
-			  // Coeff: BBBFILAC
+				// C = !Clear
+				// A = Accumulator
+				// L = Load mulInputA, if weird: detect sign. Save to iram[mempos].
+				// I = invert B
+				// F = Flips B amplitude around a midpoint between 0 and 1 (1-x)
+				// B = source for mulInputB - mulcoeffs, eram eller mulcoeffs 5??
+				// Coeff: BBBFILAC
 
 				acc = (coef & 2);
 				clr = !(coef & 1);
 
-			  // Coeff: xxxWWWxx
+				 // Coeff: xxxWWWxx
 				bool weird = (coef & 0x1c) == 0x1c;
 
 				//xxxxxMxx
@@ -289,14 +289,18 @@ public:
 			}
 				break;
 			case 0x34:
-			  // 0xb0 = 1011 0000 // everything under a0 and [0xb0, 0xc0> is ignored.
+				// All these use mem as an extended opcode, so mulInputA is unlikely to be useful, except
+				// maybe for 0xc to 0xf which writes to mulInputA - but it's likely that that is only used as temporary 
+				// storage for the eram read, and not actually used as mulInputA for the multiplication,
+				// and 0x6 which is DMAC.
+			  	// 0xb0 = 1011 0000 // everything under a0 and [0xb0, 0xc0> is ignored.
 				if (mem < 0xa0 || (mem & 0xf0) == 0xb0) printf("Unexpected value for mem (%02x) with opcode 0x34\n", mem);
 
-			  // 0xa0 = 1010 0000 // Hva som helst for 4 LSB: MMMA, M = mulcoeff, A = Accumulator
-			  // Saves accumulator (selected by mem LSB) (3 steps or more back) into mulcoeffs[mem >> 1]
+				// 0xa0 = 1010 0000 // Hva som helst for 4 LSB: MMMA, M = mulcoeff, A = Accumulator
+				// Saves accumulator (selected by mem LSB) (3 steps or more back) into mulcoeffs[mem >> 1]
 				if (mem >= 0xa0 && mem < 0xb0) shared->mulcoeffs[(mem >> 1) & 7] = ((mem & 1) ? accB : accA).getPipelineSat24();
 
-			  // 11ACPPPP
+				// 11ACPPPP
 				if (mem >= 0xc0)
 				{
 					acc = (mem & 0x20);
@@ -1080,8 +1084,8 @@ protected:
 		col += fprintf(f, "  ");
 
 		fprintf(f, "| ");
-		fprintf(f, "%-16s", getOpcodeName(opc));
-		fprintf(f, " |   ");		
+		fprintf(f, "0x%02X %15s", opc, getOpcodeInfo(opc).name);
+		fprintf(f, " |   ");
 		fprintf(f, "%-4s %c, %c%s >> %d, %-19s", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
 		fprintf(f, "  |  ");
 		fprintf(f, "%s", getOpcodeDesc(address, lastWasOp30, intmem));
