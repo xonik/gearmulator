@@ -1084,7 +1084,7 @@ protected:
 		col += fprintf(f, "  ");
 
 		fprintf(f, "| ");
-		fprintf(f, "0x%02X %15s", opc, getOpcodeInfo(opc).name);
+		fprintf(f, "0x%02X %15s", opc, getOpcodeInfo(opc, mem).name);
 		fprintf(f, " |   ");
 		fprintf(f, "%-4s %c, %c%s >> %d, %-19s", macop, acc ? 'B' : 'A', nve ? '-' : ' ', cstr, shifts[shift], ss);
 		fprintf(f, "  |  ");

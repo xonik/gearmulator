@@ -182,21 +182,22 @@ namespace jeLib
 
 				for (int i = 0; i < samples; i++) {
 					// Intepreter version (for debugging - can set breakpoints in ESPCore::step())
+					/*
 					for (size_t j = 0; j < (768/2); j++) asic0.step_cores();
 					for (size_t j = 0; j < (768/2); j++) asic1.step_cores();
 					for (size_t j = 0; j < (768/2); j++) asic2.step_cores();
 					for (size_t j = 0; j < (768/2); j++) asic3.step_cores();
-
+					*/
 					// JIT version
-					// asic0.opt.genProgramIfDirty();
-					// asic1.opt.genProgramIfDirty();
-					// asic2.opt.genProgramIfDirty();
-					// asic3.opt.genProgramIfDirty();
-
-					// asic0.opt.callOptimized(&asic0);
-					// asic1.opt.callOptimized(&asic1);
-					// asic2.opt.callOptimized(&asic2);
-					// asic3.opt.callOptimized(&asic3);
+					asic0.opt.genProgramIfDirty();
+					asic1.opt.genProgramIfDirty();
+					asic2.opt.genProgramIfDirty();
+					asic3.opt.genProgramIfDirty();
+					
+					asic0.opt.callOptimized(&asic0);
+					asic1.opt.callOptimized(&asic1);
+					asic2.opt.callOptimized(&asic2);
+					asic3.opt.callOptimized(&asic3);
 
 					// Last DSP audio output
 					// output is read from 232 and 236. Two channels = stereo. First is left, second is right.

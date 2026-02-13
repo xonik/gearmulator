@@ -9,7 +9,7 @@ struct OpcodeInfo {
 };
 
 // Lookup opcode name and description from hex value
-inline OpcodeInfo getOpcodeInfo(uint8_t opc) {
+inline OpcodeInfo getOpcodeInfo(uint8_t opc, uint8_t mem) {
 	switch (opc) {
 		case 0x00: return {
 			"kMac",
@@ -50,9 +50,79 @@ inline OpcodeInfo getOpcodeInfo(uint8_t opc) {
 		case 0x30: return {
 			"kMulCoef",
 			""};
-		case 0x34: return {
-			"Special",
-			""};
+		case 0x34: 
+			// 0xa0 = 1010 0000 // Hva som helst for 4 LSB: MMMA, M = mulcoeff, A = Accumulator
+			// Saves accumulator (selected by mem LSB) (3 steps or more back) into mulcoeffs[mem >> 1]
+			if (mem >= 0xa0 && mem < 0xb0) {
+				return {
+					"kStoreMulCoef",
+					"Store sat(A/B) to mulcoeffs"};
+			} else if (mem >= 0xc0) {
+				switch (mem & 0xf)
+				{
+					case 0x0: 
+						return {
+							"kJumpOnZero",
+							"Jump if Accumulator is zero"
+						};
+					case 0x1:
+						return {
+							"kJumpOnNegative",
+							"Jump if Accumulator is negative"
+						};
+					case 0x2:
+						return {
+							"kJumpOnPositive",
+							"Jump if Accumulator is positive"
+						};
+					case 0x3: 
+						return {
+							"kJump",
+							"Unconditional jump"
+						};
+					case 0x4: 
+						return {
+							"kSetIntPins",
+							"Set INT pins"
+						};
+					case 0x6: 
+						return {
+							"kDMAC",
+							"Double precision MAC"
+						};
+					case 0x7: {
+						return {
+							"kSetERAMVarOffset",
+							"Set ERAM variable offset from Accumulator"
+						};
+					}
+					case 0xa: {
+						return {
+							"kSetHostRegs",
+							"Set host registers from Accumulator"
+						};
+					}
+					case 0xb: {
+						return {
+							"kStoreERAM",
+							"Set ERAM write latch from Accumulator"
+						};
+					}
+					case 0xc:
+					case 0xd:
+					case 0xe:
+					case 0xf:
+						return {
+							"kReadERAM",
+							"Load ERAM read latch into IRAM"
+						};
+					default:
+						break;
+				}
+			}
+			return {
+				"Special",
+				""};
 		case 0x38: return {
 			"kStoreGRAM",
 			"Store sat(A) to GRAM"};
