@@ -991,8 +991,9 @@ protected:
 		const int shifts[4] = {7, 6, 5, 3};
 		
 		char ostr[64]; snprintf(ostr, sizeof(ostr), "[0x%02x]", mem);
+		char ostrNext[64]; snprintf(ostrNext, sizeof(ostrNext), "next: [0x%02x]", mem+1);
 
-		col += fprintf(f, "            ");
+		col += fprintf(f, "        ");
 		switch (mem)
 		{
 			case 1: snprintf(ss, sizeof(ss), "0x10"); break;
@@ -1012,12 +1013,12 @@ protected:
 		{
 			case 0x00: break;
 			case 0x04: macop = "MUL"; break;
-			case 0x08: macop = "MUL"; col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
-			case 0x0c: macop = "MUL"; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
+			case 0x08: macop = "MUL"; col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "sat(A)"); break;
+			case 0x0c: macop = "MUL"; col += fprintf(f, "%s = sat(B), %s", ss, ostrNext); strcpy(ss, "sat(B)"); break;
 			case 0x10: acc = true; break;
 			case 0x14: macop = "MUL"; acc = true; break;
-			case 0x18: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
-			case 0x1c: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
+			case 0x18: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "sat(A)"); break;
+			case 0x1c: macop = "MUL"; acc = true; col += fprintf(f, "%s = sat(B), %s", ss, ostrNext); strcpy(ss, "sat(B)"); break;
 			case 0x20: acc = shift & 2; shift &= 1; snprintf(ss, sizeof(ss), "gram%s", ostr); break;
 			case 0x24: acc = shift & 2; shift &= 1; snprintf(ss, sizeof(ss), "gram%s", ostr); macop = "MUL"; break;
 			case 0x28: macop = "<UNUSED>"; break;
@@ -1067,16 +1068,16 @@ protected:
 			case 0x4c: macop = "MUL"; col += fprintf(f, "%s = rect(sat(A)) ", ss); strcpy(ss, "sat(A)");  break;
 			case 0x50: macop = "CMP"; break;
 			case 0x54: col += fprintf(f, "<MYSTERIOUS OP 54>"); break;
-			case 0x58: col += fprintf(f, "%s = sat(A) ", ss); strcpy(ss, "sat(A)"); break;
-			case 0x5c: acc = true; col += fprintf(f, "%s = sat(B) ", ss); strcpy(ss, "sat(B)"); break;
+			case 0x58: col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "sat(A)"); break;
+			case 0x5c: acc = true; col += fprintf(f, "%s = sat(B), %s", ss, ostrNext); strcpy(ss, "sat(B)"); break;
 			case 0x70:
 			case 0x60: snprintf(ss, sizeof(ss), "~%s & 0x7fffff", temp); break;
 			case 0x74:
 			case 0x64: macop = "MUL"; snprintf(ss, sizeof(ss), "~%s & 0x7fffff", temp); break;
-			case 0x68: col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "mangle_pve(sat(A))"); break;
-			case 0x6c: macop = "MUL"; col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "mangle_pve(sat(A))"); break;
-			case 0x78: col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "abs(sat(A))"); break;
-			case 0x7c: macop = "MUL"; col += fprintf(f, "%s = sat(A)", ss); strcpy(ss, "abs(sat(A))"); break;
+			case 0x68: col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "mangle_pve(sat(A))"); break;
+			case 0x6c: macop = "MUL"; col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "mangle_pve(sat(A))"); break;
+			case 0x78: col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "abs(sat(A))"); break;
+			case 0x7c: macop = "MUL"; col += fprintf(f, "%s = sat(A), %s", ss, ostrNext); strcpy(ss, "abs(sat(A))"); break;
 			default: col += fprintf(f, "/* opc:%02x */ ", opc); break;
 		}
 		while (col < 60) col += fprintf(f, " ");
