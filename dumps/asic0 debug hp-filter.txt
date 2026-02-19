@@ -802,20 +802,45 @@
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 7
 
 # Store pitch with 14bit precision, from 0x0477 (read from 0x0479), to mulcoeffs[0]
+# f = mulcoeffs[0] = pitch (used as frequency coefficient for the HP filter below)
 0481; 00 36 80 00 [o:0x34,m:0xa0,s:0x00,c:0x00]        mulcoeffs[0] = sat(A);               | 0x34   kStoreMulCoef |   MAC  A,  #0x00 >> 7, iram1[0xa0]          |  mulcoeffs[0] = sat(A) @ [0x0477];
 
 
 
 
 
+# ============================================================================
+# 4th-order (24 dB/oct) HIGH-PASS FILTER - two cascaded Chamberlin SVFs
+#
+# State variables (IRAM is circular, write addr N is read as N+1 next run):
+#   BP1 = iram[0x90/0x91] = band-pass, stage 1
+#   LP1 = iram[0x92/0x93] = low-pass, stage 1
+#   BP2 = iram[0x94/0x95] = band-pass, stage 2
+#   LP2 = iram[0x96/0x97] = low-pass, stage 2
+#   HP1 stored to iram[0x98/0x99] (inter-stage coupling)
+#
+# f   = mulcoeffs[0] = pitch coefficient (14-bit precision, sets cutoff) // Described as 2 * sin (pi * F / Fs) in chamberlin, but pitch != F so done differently
+# M   = flip(mulcoeffs[2]) = input gain (mix-related crossfade)
+# in  = supersaw sum (accB after oscillator mixing at 0x0480)
+#
+# Stage 1 equations:
+#   LP1[n] = LP1[n-1] + (f/2) * BP1[n-1]          (OP1, shift=7 = half freq)
+#   HP1[n] = (in * M) / 2  - LP1[n] - BP1[n-1]    (OP3+OP5) // JT: Deviates from chamberlin by * M/2 for input, meaning the MIX parameter affects the filter! Sets Q to 1. check this!
+#   BP1[n] = BP1[n-1] + f * HP1[n]                 (OP7)
+#
+# Stage 2 equations:
+#   LP2[n] = LP2[n-1] + f * BP2[n-1]               (OP4)
+#   HP2[n] = (5/16) * HP1[n] - LP2[n] - BP2[n-1]   (OP6+OP8) // JT: Deviates by using a gain param for the input. probably ok.
+#   BP2[n] = BP2[n-1] + f * HP2[n]                  (OP9)
+#
+# Output = (29/16) * HP2[n]                         (OP10)
+# ============================================================================
 
-
-# AS FAR AS I GOT, FILTERING PROB STARTS HERE
-# OPERATION 1
-# [0x91] is written on 0x0496 in previous step,
-# mulcoeffs[0] is pitch with 14bit precision
-# Multiplies [0x91 with mulcoeffs[0] with DMAC, adds iram[0x93]
-# [0x93] is the value of satA written on line 484, e.g. the previous value of this calculation?
+# OP1: LP1[n] = LP1[n-1] + (f/2) * BP1[n-1]
+# iram[0x91] = BP1[n-1] (written at 0x0496 previous run)
+# iram[0x93] = LP1[n-1] (written at 0x0487 previous run)
+# mulcoeffs[0] = f (pitch). Shift=7 gives f/2 for LP integrator.
+# JT: Not sure about the f/2 here
 0482; 00 32 44 00 [o:0x30,m:0x91,s:0x00,c:0x00]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 7, iram1[0x91]          |  mulA = iram[0x91]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -823,9 +848,11 @@
 0483; 00 37 18 00 [o:0x34,m:0xc6,s:0x00,c:0x00]                                             | 0x34           kDMAC |   DMAC A,  #0x00 >> 7,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 7
 0484; 00 02 4d 40 [o:0x00,m:0x93,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x93]          |  A += iram[0x93]
 
-# OPERATION 2
-# Mulcoeffs[2] is mix * 70 / 32, inverted around midpoint so 1 - x (typical for crossfade)
-# mulA is polarity detection of B from 0x480, which is the current amplitude of osc 6, the highest pitched osc.
+# OP2: scaled_input = supersaw_sum * flip(mulcoeffs[2])  (14-bit precision)
+# Scales the supersaw sum by the inverted mix crossfade coefficient.
+# mulA = sat(B) from 0x0480 = supersaw sum (NOT sign detection, weird=false for coef 0x56).
+# mulB = flip(mulcoeffs[2]) = inverted mix gain (F bit set).
+# JT: Don't understand what this is doing yet
 0485; 00 30 01 56 [o:0x30,m:0x00,s:0x01,c:0x56]        <Unknown bit 4 for op 0x30>          | 0x30        kMulCoef |   MUL  B,  mulc2 >> 6, sat(A)               |  mulA = (sat(B) @ [0x0480] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0x00] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[2]
@@ -834,19 +861,23 @@
                                                                                             |                      |                                             |  B  = (mulA * (mulB >> 16)) >> 6
 0486; 00 37 99 56 [o:0x34,m:0xe6,s:0x01,c:0x56]                                             | 0x34           kDMAC |   DMAC B,  #0x56 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
-# OPERATION 3
-# Saves output of OPERATION 1 to iram, is used in same calculation later. Also uses OPERATION 1 as basis for MAC.
-# Adds [0x91], value from 0x0496 last step
+# OP3: Store LP1[n] to iram[0x92], then compute LP1[n] + BP1[n-1]
+# sat(A) from 0x0484 = LP1[n] (result of OP1)
+# iram[0x91] = BP1[n-1]
+# Result: A = LP1[n] + BP1[n-1] (used by OP5 to compute HP1)
+# JT: OK
 0487; 00 0a 49 40 [o:0x08,m:0x92,s:0x01,c:0x40]        iram1[0x92] = sat(A), next: [0x93]   | 0x08      kStoreIRAM |   MUL  A,  #0x40 >> 6, sat(A)               |  A  = sat(A) @ [0x0484]
 0488; 00 02 45 40 [o:0x00,m:0x91,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x91]          |  A += iram[0x91]
 
-# Saves output of OPERATION 2 to iram
+# Store scaled_input to iram[0x17] (result of OP2, used by OP5)
+# JT: OK
 0489; 00 5c 5c 00 [o:0x5c,m:0x17,s:0x00,c:0x00]        iram1[0x17] = sat(B), next: [0x18]   | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x0486]
 
-# OPERATION 4
-# mulA = iram[0x95], written on 0x049c (just before end of filter?)
-# mulB = mulcoeffs[0] is pitch with 14bit precision
-# does DMAC of the two and adds 0x97 which is written on line 048f
+# OP4: LP2[n] = LP2[n-1] + f * BP2[n-1]
+# iram[0x95] = BP2[n-1] (written at 0x049c previous run)
+# mulcoeffs[0] = f (pitch). Shift=6 = full frequency coefficient.
+# iram[0x97] = LP2[n-1] (written at 0x048f previous run)
+# JT: If it is true that >> 6 is * 1, then it's correct that >> 7 is f / 2 on line 0482
 048a; 00 32 55 02 [o:0x30,m:0x95,s:0x01,c:0x02]                                             | 0x30        kMulCoef |   MUL  B,  mulc0 >> 6, iram1[0x95]          |  mulA = iram[0x95]
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
                                                                                             |                      |                                             |  save mulB to lastMulB
@@ -854,23 +885,29 @@
 048b; 00 37 99 02 [o:0x34,m:0xe6,s:0x01,c:0x02]                                             | 0x34           kDMAC |   DMAC B,  #0x02 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 048c; 00 12 5d 40 [o:0x10,m:0x97,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0x97]          |  B += iram[0x97]
 
-# OPERATION 5
-# saves output of OPERATION 3 to iram, and also uses OPERATION 3 as basis for operation
-# iram[0x17] is the result of OPERATION 2 in THIS step. * 32 >> 6 does divide by two, so half of iram[0x17] is added.
+# OP5: HP1[n] = scaled_input / 2 - (LP1[n] + BP1[n-1])
+# sat(A) from 0x0488 = LP1[n] + BP1[n-1] (result of OP3)
+# Negated: * -128 >> 7 = * -1
+# iram[0x17] = scaled_input (from OP2). * 32 >> 6 = * 0.5
+# Result: HP1 = -(LP1 + BP1) + scaled_input/2 = scaled_input/2 - LP1 - BP1
+# JT: OK
 048d; 00 08 00 80 [o:0x08,m:0x00,s:0x00,c:0x80]        iram1[0x00] = sat(A), next: [0x01]   | 0x08      kStoreIRAM |   MUL  A,  #0x80 >> 7, sat(A)               |  A  = sat(A) @ [0x0488] * -128 >> 7
 048e; 00 00 5d 20 [o:0x00,m:0x17,s:0x01,c:0x20]                                             | 0x00            kMac |   MAC  A,  #0x20 >> 6, iram1[0x17]          |  A += iram[0x17] * 32 >> 6
 
-# OPERATION 6
-# saves output of OPERATION 4 to iram  and also uses  OPERATION 4 as basis for MAC
-# mulA = iram[0x95], written on 0x049c (just before end of filter?)
+# OP6: Store LP2[n] to iram[0x96], then compute LP2[n] + BP2[n-1]
+# sat(B) from 0x048c = LP2[n] (result of OP4)
+# iram[0x95] = BP2[n-1]
+# Result: B = LP2[n] + BP2[n-1] (used by OP8 to compute HP2)
+# JT: OK
 048f; 00 1e 59 40 [o:0x1c,m:0x96,s:0x01,c:0x40]        iram1[0x96] = sat(B), next: [0x97]   | 0x1C      kStoreIRAM |   MUL  B,  #0x40 >> 6, sat(B)               |  B  = sat(B) @ [0x048c]
 0490; 00 12 55 40 [o:0x10,m:0x95,s:0x01,c:0x40]                                             | 0x10            kMac |   MAC  B,  #0x40 >> 6, iram1[0x95]          |  B += iram[0x95]
 
-# OPERATION 7
-# saves output of OPERATION 5 to iram
-# mulA = OPERATION 5
-# mulb = mulcoeffs[0] is pitch with 14bit precision
-# does DMAC of the two and adds [0x91], value from 0x0496 last step
+# OP7: BP1[n] = BP1[n-1] + f * HP1[n]
+# sat(A) from 0x048e = HP1[n] (result of OP5). NOT sign detection (weird=false, coef=0x04).
+# Stored to iram[0x98] (HP1, used as inter-stage input by OP8 and OP10).
+# mulcoeffs[0] = f. Shift=6 = full frequency coefficient.
+# iram[0x91] = BP1[n-1]
+# JT: OK, but my own comment about mulA is probably wrong!
 0491; 00 32 61 04 [o:0x30,m:0x98,s:0x01,c:0x04]                                             | 0x30        kMulCoef |   MUL  A,  mulc0 >> 6, sat(A)               |  mulA = (sat(A) @ [0x048e] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0x98] = mulA
                                                                                             |                      |                                             |  mulB = mulcoeffs[0]
@@ -879,22 +916,26 @@
 0492; 00 37 19 04 [o:0x34,m:0xc6,s:0x01,c:0x04]                                             | 0x34           kDMAC |   DMAC A,  #0x04 >> 6,                      |  A += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 0493; 00 02 45 40 [o:0x00,m:0x91,s:0x01,c:0x40]                                             | 0x00            kMac |   MAC  A,  #0x40 >> 6, iram1[0x91]          |  A += iram[0x91]
 
-# OPERATION 8
-# saves output of OPERATION 6 to iram
-# Loads B with -1 * OPERATION 6
-# Adds [0x98] times a number between 0 and 1, but something is wrong with my disassembler, this is never set
+# OP8: HP2[n] = (5/16) * HP1[n] - (LP2[n] + BP2[n-1])
+# sat(B) from 0x0490 = LP2[n] + BP2[n-1] (result of OP6)
+# Negated: * -128 >> 7 = * -1
+# iram[0x98] = HP1[n] (written at 0x0491 THIS step, coef 0x04 sets L bit).
+# * 20 >> 6 = 20/64 = 5/16 (inter-stage gain)
+# Result: HP2 = -(LP2 + BP2) + (5/16)*HP1 = (5/16)*HP1 - LP2 - BP2
+# JT: OK
 0494; 00 1c 00 80 [o:0x1c,m:0x00,s:0x00,c:0x80]        iram1[0x00] = sat(B), next: [0x01]   | 0x1C      kStoreIRAM |   MUL  B,  #0x80 >> 7, sat(B)               |  B  = sat(B) @ [0x0490] * -128 >> 7
 0495; 00 12 61 14 [o:0x10,m:0x98,s:0x01,c:0x14]                                             | 0x10            kMac |   MAC  B,  #0x14 >> 6, iram1[0x98]          |  B += iram[0x98] * 20 >> 6
 
-# saves output of OPERATION 7, is read on 0493, 0488, 0483 in the next round.
+# Store BP1[n] to iram[0x90] (read as iram[0x91] next run, used by OP1, OP3, OP7)
+# JT: OK
 0496; 00 5a 40 00 [o:0x58,m:0x90,s:0x00,c:0x00]        iram1[0x90] = sat(A), next: [0x91]   | 0x58      kStoreIRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x0493]
 
-# OPERATION 9
-# loads B with the output from line 049d, near the output
-# mulA is the polarity of the result of OPERATION 8
-# mulb = mulcoeffs[0] is pitch with 14bit precision
-# Calculates DMAC of the two.
-# Coefficient = 4194304 (0x400000)
+# OP9: BP2[n] = BP2[n-1] + f * HP2[n]
+# iram[0x95] = BP2[n-1]
+# sat(B) from 0x0495 = HP2[n] (result of OP8). NOT sign detection (weird=false, coef=0x07).
+# Stored to iram[0x99] (HP2, used by OP10 for output gain).
+# mulcoeffs[0] = f. Shift=6 = full frequency coefficient.
+# JT: OK
 0497; 00 16 55 40 [o:0x14,m:0x95,s:0x01,c:0x40]                                             | 0x14            kMac |   MUL  B,  #0x40 >> 6, iram1[0x95]          |  B  = iram[0x95]
 0498; 00 32 65 07 [o:0x30,m:0x99,s:0x01,c:0x07]                                             | 0x30        kMulCoef |   MAC  B,  mulc0 >> 6, sat(A)               |  mulA = (sat(B) @ [0x0495] >= 0 ? 0x7fffff : 0xFF800000)
                                                                                             |                      |                                             |  iram[0x99] = mulA
@@ -903,15 +944,18 @@
                                                                                             |                      |                                             |  B += (mulA * (mulB >> 16)) >> 6
 0499; 00 37 99 07 [o:0x34,m:0xe6,s:0x01,c:0x07]                                             | 0x34           kDMAC |   DMAC B,  #0x07 >> 6,                      |  B += ((lastMulA >> 7) * ((lastMulB >> 9) & 0x7f)) >> 6
 
-# OPERATION 10
-# loads A with [0x99] times a number > 1, but something is wrong with my disassembler, [0x99] is never set
-# Coefficient = 7602176 (0x740000)
+# OP10: output = (29/16) * HP2[n]
+# iram[0x99] = HP2[n] (written at 0x0498 THIS step, coef 0x07 sets L bit).
+# * 116 >> 6 = 116/64 = 29/16 ≈ 1.8125 (output gain compensation)
+# JT: OK
 049a; 00 06 65 74 [o:0x04,m:0x99,s:0x01,c:0x74]                                             | 0x04            kMac |   MUL  A,  #0x74 >> 6, iram1[0x99]          |  A  = iram[0x99] * 116 >> 6
 
-# saves output of OPERATION 9 to iram
+# Store BP2[n] to iram[0x94] (read as iram[0x95] next run, used by OP4, OP6, OP9)
+# JT: OK
 049c; 00 5e 50 00 [o:0x5c,m:0x94,s:0x00,c:0x00]        iram1[0x94] = sat(B), next: [0x95]   | 0x5C      kStoreIRAM |   MAC  B,  #0x00 >> 7, sat(B)               |  B += 0, mulA=sat(B) @ [0x0499]
 
-# saves output of OPERATION 10 to iram
+# Store HP filter output to GRAM[0x70] (inter-DSP bus output)
+# JT: OK
 049d; 00 39 c0 00 [o:0x38,m:0x70,s:0x00,c:0x00]        gram[0x70]  = sat(A)                 | 0x38      kStoreGRAM |   MAC  A,  #0x00 >> 7, sat(A)               |  A += 0, mulA=sat(A) @ [0x049a]
 
 // OSC 1 ENDS HERE!!!!
